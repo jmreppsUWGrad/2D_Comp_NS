@@ -9,6 +9,11 @@ time step and convergence information and alters the object's temperature,
 velocity, pressure, density. BCs are applied as appropriate, but must be 
 defined and copied into the solver object.
 
+Assumptions:
+    -equal discretization spacings in either x or y
+    -constant thermal conductivity for conduction
+    -constant viscosity for shear stress
+
 Features:
     -Conservative Fourrier number correction based on smallest discretization
     -
@@ -67,43 +72,19 @@ class OneDimSolve():
 
 # 2D solver
 class TwoDimPlanarSolve():
-    def __init__(self, geom_obj, CFL, timeSteps, conv):
+    def __init__(self, geom_obj, settings, BCs):
         self.Domain=geom_obj # Geometry object
-        self.CFL=CFL
+        self.CFL=settings['CFL']
         self.Nt=timeSteps
         self.conv=conv
         self.dx,self.dy=numpy.meshgrid(geom_obj.dx,geom_obj.dy)
-#        self.dx=geom.dx        
-#        self.dy=geom.dy
-        self.maxCount=1000
-
-        self.BCs={'BCx1': ('T',600,(0,-1)),\
-                 'BCx2': ('T',300,(0,-1)),\
-                 'BCy1': ('T',600,(0,-1)),\
-                 'BCy2': ('T',300,(0,-1))\
-                 }
-        
-        # Pointers to conservative/primitive variable arrays
-        self.rhoE=geom_obj.rhoE # Conservative arrays
-        self.rhou=geom_obj.rhou
-        self.rhov=geom_obj.rhov
-        self.rho=geom_obj.rho # Primitive arrays
-        self.T=geom_obj.T
-        self.u=geom_obj.u
-        self.v=geom_obj.v
-        self.p=geom_obj.p
+        self.BCs=BCs
     
     # Time step check with all dx and dys for stability (CHANGE TO CFL NUMBER CHECK)
     def getdt(self):
         dx=min(numpy.amin(self.dx),numpy.amin(self.dy))
         c=1 # ADD SPEED OF SOUND RETRIEVAL
         return self.CFL*dx/(c)
-#        if self.Fo/dx**2<0.25:
-#            print 'Time step is within stability limits'
-#        else:
-#            self.Fo=0.24999*dx**2
-#            self.dt=self.Fo/self.Domain.mat_prop['k']*self.Domain.mat_prop['Cp']*self.Domain.mat_prop['rho']
-#            print 'Time step changed to %3f for stability'%self.dt
 
     # Convergence checker (REMOVE? NO IMPLICIT CALCULATIONS DONE)
     def CheckConv(self, Tprev, Tnew):
@@ -116,10 +97,112 @@ class TwoDimPlanarSolve():
     # Solve
     """ To do:
         - flux terms calculator
-        - source term
+        - source terms
         - RK time advancement (eventually)
         
-    """    
+    """
+    # Flux computer (used for flux of conservative variables)
+    def compute_Flux(rho1, rho2, u, dx):
+        return -u*(rho2-rho1)/dx
+    # Stress tensor gradient calculation for momentum
+    def Source_Stress(self, u0, u1, u2, dx):
+        # Calculations for stress
+        mu=self.Domain.mu
+        return mu*(u2+u0-2*u1)/dx**2
+    # Work via control surface calculation (grad*(sigma*v))
+    def Source_CSWork(self):
+        work=0
+        return work
+    # Heat conduction gradient source term
+    def Source_Cond(self, T0, T1, T2, dx):
+        k=self.Domain.k
+        return k*(T2+T0-2*T1)/dx**2
+    # Bondary condition handler
+    def Apply_BCs(self):
+        # Start with wall BCs (implied 0 gradients and no slip)
+        if self.BCs['bc_type_left']=='wall':
+            self.Domain.rho[:,0]=self.Domain.rho[:,1]
+            self.Domain.p[:,0]=self.Domain.p[:,1]
+            self.Domain.u[:,0]=0
+            self.Domain.v[:,0]=0
+            self.Domain.T[:,0]=self.BCs['bc_left_T']
+            
+            # What to do now? Conservative values?
+            
+        else:
+            if self.BCs[]
+        
+        # Conservative values at boundaries
+        self.Domain.rhou[:,0]=self.Domain.rho[:,0]*self.Domain.u[:,0]
+        self.Domain.rhov[:,0]=self.Domain.rho[:,0]*self.Domain.v[:,0]
+        self.Domain.rhoE[:,0]=self.Domain.rho[:,0]*\
+            (0.5*(self.Domain.u[:,0]**2+self.Domain.v[:,0]**2)+\
+             self.Domain.Cv*self.Domain.T[:,0])
+    
+    # Main compressible solver (1 time step)
+    def Advance_Soln(self):
+        rho=self.Domain.rho.copy()
+        rhou=self.Domain.rhou.copy()
+        rhov=self.Domain.rhovcopy()
+        rhoE=self.Domain.rhoEcopy()
+        drhodt=numpy.empty_like(rho)
+        drhoudt=numpy.empty_like(rhou)
+        drhovdt=numpy.empty_like(rhov)
+        drhoEdt=numpy.empty_like(rhoE)
+        
+        ###################################################################
+        # Compute primitive variables
+        ###################################################################
+        self.Domain.primitiveFromConserv()
+        
+        ###################################################################
+        # Compute time deriviatives of conservatives (2nd order central schemes)
+        ###################################################################
+        
+        # Density
+        drhodt[1:-1,1:-1] =self.compute_Flux(rho[1:-1,:-2], rho[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
+        drhodt[1:-1,1:-1]+=self.compute_Flux(rho[:-2,1:-1], rho[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
+        
+        # x-momentum (convection)
+        drhoudt[1:-1,1:-1] =self.compute_Flux(rhou[1:-1,:-2], rhou[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
+        drhoudt[1:-1,1:-1]+=self.compute_Flux(rhou[:-2,1:-1], rhou[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
+        # x-momentum (source-stress and pressure)
+        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.u[1:-1,:-2], self.Domain.u[1:-1,1:-1],self.Domain.u[1:-1,2:],self.dx[1:-1,1:-1])
+        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.u[:-2,1:-1], self.Domain.u[1:-1,1:-1],self.Domain.u[2:,1:-1],self.dy[1:-1,1:-1])
+        drhoudt[1:-1,1:-1]+=self.compute_Flux(self.Domain.p[1:-1,:-2],self.Domain.p[1:-1,2:],1, 2*self.Domain.dx[1:-1,1:-1])
+        
+        # y-momentum (convection)
+        drhovdt[1:-1,1:-1] =self.compute_Flux(rhov[1:-1,:-2], rhov[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
+        drhovdt[1:-1,1:-1]+=self.compute_Flux(rhov[:-2,1:-1], rhov[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
+        # y-momentum (source-stress and pressure)
+        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.v[1:-1,:-2], self.Domain.v[1:-1,1:-1],self.Domain.v[1:-1,2:],self.dx[1:-1,1:-1])
+        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.v[:-2,1:-1], self.Domain.v[1:-1,1:-1],self.Domain.v[2:,1:-1],self.dy[1:-1,1:-1])
+        drhovdt[1:-1,1:-1]+=self.compute_Flux(self.Domain.p[:-2,1:-1],self.Domain.p[2:,1:-1],1, 2*self.dy[1:-1,1:-1])
+        
+        # Energy (convection)
+        drhoEdt[1:-1,1:-1] =self.compute_Flux(rhoE[1:-1,:-2], rhoE[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
+        drhoEdt[1:-1,1:-1]+=self.compute_Flux(rhoE[:-2,1:-1], rhoE[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
+        # Energy (source-CS work)
+        drhoEdt[1:-1,1:-1]+=self.Source_CSWork()
+        # Energy (source-conduction)
+        drhoEdt[1:-1,1:-1]+=self.Source_Cond(self.Domain.T[1:-1,:-2], self.Domain.T[1:-1,1:-1],self.Domain.T[1:-1,2:],self.dx[1:-1,1:-1])
+        drhoEdt[1:-1,1:-1]+=self.Source_Cond(self.Domain.T[:-2,1:-1], self.Domain.T[1:-1,1:-1],self.Domain.T[2:,1:-1],self.dy[1:-1,1:-1])
+        
+        # Compute new conservative values in new time time step
+        dt=self.getdt()
+        
+        self.Domain.rho[1:-1,1:-1] =rho[1:-1,1:-1]  + dt * drhodt[1:-1,1:-1]
+        self.Domain.rhou[1:-1,1:-1]=rhou[1:-1,1:-1] + dt * drhoudt[1:-1,1:-1]
+        self.Domain.rhov[1:-1,1:-1]=rhov[1:-1,1:-1] + dt * drhovdt[1:-1,1:-1]
+        self.Domain.rhoE[1:-1,1:-1]=rhoE[1:-1,1:-1] + dt * drhoEdt[1:-1,1:-1]
+        
+        # Boundary conditions
+        self.Apply_BCs()
+        
+        
+        # Output data to file (IN PROGRESS)
+        
+        
 ##### FORMER EXPLICIT-TRANS CONDUCTION SOLVER INCLUDING BC CALCULATION #################
     def SolveExpTrans(self):
         Tc=numpy.empty_like(self.T)

@@ -16,15 +16,14 @@ class FileOut():
         else:
             write_type='w'
         self.fout=open(filename, write_type)
-    def header(self, title='Solver'):
-        f=self.fout
-        f.write('######################################################\n')
-        f.write('#                      Solver                        #\n')
-        f.write('#              Created by J. Mark Epps               #\n')
-        f.write('#          Part of Masters Thesis at UW 2018-2020    #\n')
-        f.write('######################################################\n')
+    def header(self, title='Run'):
+        self.fout.write('######################################################\n')
+        self.fout.write('#              2D Navier-Stokes Solver               #\n')
+        self.fout.write('#              Created by J. Mark Epps               #\n')
+        self.fout.write('#          Part of Masters Thesis at UW 2018-2020    #\n')
+        self.fout.write('######################################################\n')
+        self.fout.write(title)
     
     def Write(self, string):
-        f=self.fout
-        f.write(string)
-        f.write('\n')
+        self.fout.write(string)
+        self.fout.write('\n')

@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 25 10:51:15 2018
+2D Compressible Navier-Stokes solver
+
+Boundary condition options:
+    -'wall' for bc_type will imply no-slip, dp and drho of 0; T must be specified
+    -'zero_grad' will impose 0 normal gradient of that variable
+    
+Features to include (across all classes):
+    -CoolProp library for material properties (track down needed functions)
+    -Fix biasing meshing tools (this script and GeomClasses)
 
 @author: Joseph
 """
@@ -11,73 +19,109 @@ Created on Fri May 25 10:51:15 2018
 #import numpy
 from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
+from datetime import datetime
+import os
 
 #from GeomClasses import OneDimLine as OneDimLine
 from GeomClasses import TwoDimPlanar as TwoDimPlanar
 #import MatClasses as Mat
 import SolverClasses as Solvers
+#import CoolProp.CoolProp as CP
+import FileClasses
 
 ##########################################################################
-# ------------------------------ Geometry and Domain Setup
+# ------------------------------ Geometry, Domain and BCs Setup
+#    Reference directions:
+#    Left-smallest x coordinate
+#    Right-largest x value
+#    North-largest y coordinate
+#    South-smallest y coordinate
 ##########################################################################
-L=3*10**(-3) # Length (x coordinate max)
-W=6*10**(-3) # Width (y coordinate max)
-Nx=301 # Number of nodes in x
-Ny=601 # Number of nodes in y
-dt=10**(-6) # Time step size
-Nt=1000 # Number of time steps
-conv=0.001 # Convergence criteria
-mat_prop={'k': 5, 'Cp': 800, 'rho': 8000}
+settings={} # Dictionary of problem settings
+BCs={} # Dictionary of boundary conditions
+# Geometry details
+settings['Length']                  = 3*10**(-3)
+settings['Width']                   = 6*10**(-3)
+settings['Nodes_x']                 = 301
+settings['Nodes_y']                 = 601
+settings['k']                       = 0.023 # If using constant value
+settings['gamma']                   = 1.4
+settings['R']                       = 0.314 # Specific to fluid
+settings['mu']                      = 0.002
+
+# Meshing details
+settings['bias_type_x']             = None
+settings['bias_size_x']             = 0.003 # Smallest element size (IN PROGRESS)
+settings['bias_type_y']             = None
+settings['bias_size_y']             = 10**(-6) # Smallest element size (IN PROGRESS)
+
+# Boundary conditions
+BCs['bc_type_left']                 = 'inlet'
+BCs['bc_left_u']                    = None
+BCs['bc_left_v']                    = None
+BCs['bc_left_p']                    = None
+BCs['bc_left_T']                    = None
+BCs['bc_type_right']                = 'outlet'
+BCs['bc_right_u']                   = None
+BCs['bc_right_v']                   = None
+BCs['bc_right_p']                   = None
+BCs['bc_right_T']                   = None
+BCs['bc_type_south']                = 'wall'
+BCs['bc_south_u']                   = None
+BCs['bc_south_v']                   = None
+BCs['bc_south_p']                   = None
+BCs['bc_south_T']                   = 500
+BCs['bc_type_north']                = 'wall'
+BCs['bc_north_u']                   = None
+BCs['bc_north_v']                   = None
+BCs['bc_north_p']                   = None
+BCs['bc_north_T']                   = 500
+
+# Initial conditions ????
+
+
+# Time advancement
+settings['CFL']                     = 0.05
+settings['total_time_steps']        = 100
+
 
 #domain=OneDimLine(L,Nx)
-domain2=TwoDimPlanar(L,W,Nx,Ny)
+domain=TwoDimPlanar(settings)
+domain.mesh()
 
 ##########################################################################
-# --------------------------------------Meshing
+# -------------------------------------Initialize solver and domain
 ##########################################################################
-smallest=0.000001
-#domain.bias_elem['TwoWayEnd']=smallest
-#domain.mesh()
-#domain2.xbias_elem['TwoWayEnd']=smallest
-domain2.ybias_elem['OneWayUp']=smallest
-domain2.mesh()
+solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
+
+domain.rho[1:-1,1:-1]=1.2
+domain.u[1:-1,1:-1]=0
+domain.v[1:-1,1:-1]=0
+domain.T[1:-1,1:-1]=300
+#domain.p[:,:]=101325
+
+domain.p[1:-1,1:-1]=domain.rho[1:-1,1:-1]*domain.R*domain.T[1:-1,1:-1]
+solver.Apply_BCs()
+#domain.T[1:-1,1:-1]=domain.p[1:-1,1:-1]/domain.rho[1:-1,1:-1]/domain.R
+
+domain.rhou[:,:]=domain.rho[:,:]*domain.u[:,:]
+domain.rhov[:,:]=domain.rho[:,:]*domain.v[:,:]
+domain.rhoE[:,:]=domain.rho[:,:]*(0.5*(domain.u[:,:]**2+domain.v[:,:]**2) \
+           +domain.Cv*domain.T[:,:])
 
 ##########################################################################
-# -------------------------------------Initialize domain
+# -------------------------------------File setups
 ##########################################################################
-#domain.T[:]=300
-domain2.T[:,:]=300
-domain2.mat_prop=mat_prop
-
-##########################################################################
-# -------------------------------------Boundary conditions
-##########################################################################
-BC_info={'BCx1': ['F',0,(1,-2)],\
-         'BCx2': ['C',(10,300),(1,-2)],\
-         'BCy1': ['F',0,(1,-2)],\
-         'BCy2': ['F',4*10**8,(1,-299),'C',(10,300),(2,-2)]\
-         }
-#domain.T[-1]=600 # Boundary condition
-#domain2.T[:,0]=600
-#domain2.T[:,-1]=300
-#domain2.T[0,:]=600
-#domain2.T[-1,:]=300
-
-##########################################################################
-# -------------------------------------Initialize solver
-##########################################################################
-#solver=Solvers.OneDimCondSolve(domain,dt,Nt,conv)
-solver2=Solvers.TwoDimCondSolve(domain2,dt,Nt,conv)
-solver2.BCs=BC_info
-solver2.CheckFo() # Check Fo for stability
+os.chdir('Tests')
+name=datetime.date()+'_'+datetime.time()
+output_file=FileClasses.FileOut(name, False)
 
 ##########################################################################
 # -------------------------------------Solve
 ##########################################################################
-#solver.SolveExpTrans()
-#solver.SolveSS()
-solver2.SolveExpTrans()
-#solver2.SolveSS()
+
+for nt in range(settings['total_time_steps']):
+    solver.Advance_Soln()
 
 ##########################################################################
 # ------------------------------------Plots
@@ -93,10 +137,10 @@ solver2.SolveExpTrans()
 #ax.set_zlabel('T (K)')
 
 fig2=pyplot.figure(figsize=(7,7))
-pyplot.plot(domain2.Y[:,1]*1000, domain2.T[:,1],marker='x')
+pyplot.plot(domain.Y[:,1]*1000, domain.T[:,1],marker='x')
 pyplot.xlabel('$y$ (mm)')
 pyplot.ylabel('T (K)')
 pyplot.title('Temperature distribution at 2nd x')
 pyplot.xlim(5,6)
 
-print('End of script')
+print('End of solver')

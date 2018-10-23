@@ -71,17 +71,20 @@ class OneDimLine:
                 
 
 class TwoDimPlanar:
-    def __init__(self, length, width, node_len, node_wid):
+    def __init__(self, settings):
         
-        self.L=length
-        self.W=width
-        self.Nx=node_len
-        self.Ny=node_wid
+        self.L=settings['Length']
+        self.W=settings['Width']
+        self.Nx=settings['Nodes_x']
+        self.Ny=settings['Nodes_y']
         self.x=numpy.zeros(self.Nx)
         self.y=numpy.zeros(self.Ny)
         self.dx=numpy.zeros(self.Nx-1)
         self.dy=numpy.zeros(self.Ny-1)
-        self.mat_prop={'k': 10, 'gamma': 1.4, 'R': 0.314}
+        self.k=settings['k']
+        self.gamma=settings['gamma']
+        self.mu=settings['mu']
+        self.R=settings['R']
         self.isMeshed=False
         
         # Dictionaries to define biasing (smallest element)
@@ -163,7 +166,7 @@ class TwoDimPlanar:
         self.T=(self.rhoE/self.rho-0.5*(self.u**2+self.v**2))/self.Cv
         
         # Ideal gas law assumed
-        self.p=self.rho*self.mat_prop['R']*self.T
+        self.p=self.rho*self.R*self.T
     
     # Calculate temperature dependent properties (unsure if this will be the spot)
     def calcTempDepProp(self):

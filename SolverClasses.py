@@ -24,6 +24,7 @@ Features:
 import numpy
 #import GeomClasses
 #import MatClasses
+import CoolProp.CoolProp as CP
 
 # 1D Solvers (CURRENTLY ONLY FOR CONDUCTION)
 class OneDimSolve():
@@ -75,15 +76,15 @@ class TwoDimPlanarSolve():
     def __init__(self, geom_obj, settings, BCs):
         self.Domain=geom_obj # Geometry object
         self.CFL=settings['CFL']
-        self.Nt=timeSteps
-        self.conv=conv
+        self.Nt=settings['total_time_steps']
+#        self.conv=conv
         self.dx,self.dy=numpy.meshgrid(geom_obj.dx,geom_obj.dy)
         self.BCs=BCs
     
     # Time step check with all dx and dys for stability (CHANGE TO CFL NUMBER CHECK)
     def getdt(self):
         dx=min(numpy.amin(self.dx),numpy.amin(self.dy))
-        c=1 # ADD SPEED OF SOUND RETRIEVAL
+        c=CP.PropsSI('A','T',numpy.amax(self.Domain.T),'P',numpy.amax(self.Domain.p),self.Domain.fluid) # ADD SPEED OF SOUND RETRIEVAL
         return self.CFL*dx/(c)
 
     # Convergence checker (REMOVE? NO IMPLICIT CALCULATIONS DONE)
@@ -101,36 +102,214 @@ class TwoDimPlanarSolve():
         - RK time advancement (eventually)
         
     """
-    # Flux computer (used for flux of conservative variables)
-    def compute_Flux(rho1, rho2, u, dx):
-        return -u*(rho2-rho1)/dx
-    # Stress tensor gradient calculation for momentum
-    def Source_Stress(self, u0, u1, u2, dx):
-        # Calculations for stress
+    # Flux computer (flux of conservative variables AND gradient calculations)
+    def compute_Flux(rho, u, v, dx, dy):
+        dx*=2 # Central difference schemes
+        dy*=2
+        rhou=rho*u
+        rhov=rho*v
+        ddx=(rhou[1:-1,2:]-rhou[1:-1,:-2])/dx[1:-1,1:-1]
+        ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
+        return ddx+ddy
+    
+    # Shear stress gradient calculation for momentum
+    def Calculate_Stress(self, u, v, dx, dy):
+        dx*=2 # Central difference schemes
+        dy*=2
         mu=self.Domain.mu
-        return mu*(u2+u0-2*u1)/dx**2
+        # Central differences up to boundaries
+        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/dx[1:-1,1:-1]-\
+            (v[2:,1:-1]-v[:-2,1:-1])/dy[1:-1,1:-1])
+        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/dx[1:-1,1:-1]+\
+            (u[2:,1:-1]-u[:-2,1:-1])/dy[1:-1,1:-1])
+        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/dy[1:-1,1:-1]-\
+            (u[1:-1,2:]-u[1:-1,:-2])/dx[1:-1,1:-1])
+        # Forward/backward differences for boundary values (corners not calculated)
+        dx/=2.0
+        dy/=2.0
+        self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,1:-1])/dx[0,1:-1]-\
+            (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
+        self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,1:-1])/dx[-1,1:-1]-\
+            (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
+        self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
+            (v[2:,0]-v[1:-1,0])/dy[1:-1,0])
+        self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
+            (v[2:,-1]-v[1:-1,-1])/dy[1:-1,-1])
+
+        self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,1:-1])/dx[0,1:-1]+\
+            (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
+        self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,1:-1])/dx[-1,1:-1]+\
+            (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
+        self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
+            (u[2:,0]-u[1:-1,0])/dy[1:-1,0])
+        self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
+            (u[2:,-1]-u[1:-1,-1])/dy[1:-1,-1])
+
+        self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
+            (u[0,2:]-u[0,1:-1])/dx[0,1:-1])
+        self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
+            (u[-1,2:]-u[-1,1:-1])/dx[-1,1:-1])
+        self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[1:-1,0])/dy[1:-1,0]-\
+            (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
+        self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[1:-1,-1])/dy[1:-1,-1]-\
+            (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
+    
     # Work via control surface calculation (grad*(sigma*v))
-    def Source_CSWork(self):
-        work=0
+    def Source_CSWork(self, u, v, dx, dy):
+        tau11u=self.Domain.tau11*u
+        tau12v=self.Domain.tau12*v
+        tau21u=self.Domain.tau12*u
+        tau22v=self.Domain.tau22*v
+        
+        work =self.compute_Flux(1.0, tau11u, tau21u, dx, dy)
+        work+=self.compute_Flux(1.0, tau12v, tau22v, dx, dy)
+        
         return work
+    
     # Heat conduction gradient source term
-    def Source_Cond(self, T0, T1, T2, dx):
+    def Source_Cond(self, T, dx, dy):
+        dx*=2
+        dy*=2
+        qx=numpy.empty_like(T)
+        qy=numpy.empty_like(T)
         k=self.Domain.k
-        return k*(T2+T0-2*T1)/dx**2
+        # Central difference
+        qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/dx[:,1:-1]
+        qy[1:-1,:]=-k*(T[2:,:]-T[:-2,:])/dy[1:-1,:]
+        # Forward/backward difference for boundaries
+        dx/=2
+        dy/=2
+        qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
+        qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        
+        qy[0,:] =-k*(T[1,:]-T[0,:])/dy[1:-1,:]
+        qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[1:-1,:]
+        
+        return self.compute_Flux(1.0,qx,qy,dx,dy)
+    
     # Bondary condition handler
     def Apply_BCs(self):
         # Start with wall BCs (implied 0 gradients and no slip)
+        
+        # Left face
         if self.BCs['bc_type_left']=='wall':
             self.Domain.rho[:,0]=self.Domain.rho[:,1]
-            self.Domain.p[:,0]=self.Domain.p[:,1]
-            self.Domain.u[:,0]=0
-            self.Domain.v[:,0]=0
-            self.Domain.T[:,0]=self.BCs['bc_left_T']
-            
-            # What to do now? Conservative values?
+            self.Domain.p[:,0]  =self.Domain.p[:,1]
+            self.Domain.u[:,0]  =0
+            self.Domain.v[:,0]  =0
+            self.Domain.T[:,0]  =self.BCs['bc_left_T']
             
         else:
-            if self.BCs[]
+            if self.BCs['bc_left_rho']=='zero_grad':
+                self.Domain.rho[:,0]=self.Domain.rho[:,1]
+            else:
+                self.Domain.rho[:,0]=self.BCs['bc_left_rho']
+            if self.BCs['bc_left_p']=='zero_grad':
+                self.Domain.p[:,0]  =self.Domain.p[:,1]
+            else:
+                self.Domain.p[:,0]  =self.BCs['bc_left_p']
+            if self.BCs['bc_left_u']=='zero_grad':
+                self.Domain.u[:,0]  =self.Domain.u[:,1]
+            else:
+                self.Domain.u[:,0]  =self.BCs['bc_left_u']
+            if self.BCs['bc_left_v']=='zero_grad':
+                self.Domain.v[:,0]  =self.Domain.v[:,1]
+            else:
+                self.Domain.v[:,0]  =self.BCs['bc_left_v']    
+            if self.BCs['bc_left_T']=='zero_grad':
+                self.Domain.T[:,0]  =self.Domain.T[:,1]
+            else:
+                self.Domain.T[:,0]  =self.BCs['bc_left_T']
+        
+        # Right face
+        if self.BCs['bc_type_right']=='wall':
+            self.Domain.rho[:,-1]=self.Domain.rho[:,-2]
+            self.Domain.p[:,-1]  =self.Domain.p[:,-2]
+            self.Domain.u[:,-1]  =0
+            self.Domain.v[:,-1]  =0
+            self.Domain.T[:,-1]  =self.BCs['bc_right_T']
+        
+        else:
+            if self.BCs['bc_right_rho']=='zero_grad':
+                self.Domain.rho[:,-1]=self.Domain.rho[:,-2]
+            else:
+                self.Domain.rho[:,-1]=self.BCs['bc_right_rho']
+            if self.BCs['bc_right_p']=='zero_grad':
+                self.Domain.p[:,-1]  =self.Domain.p[:,-2]  
+            else:
+                self.Domain.p[:,-1]  =self.BCs['bc_right_p']
+            if self.BCs['bc_right_u']=='zero_grad':
+                self.Domain.u[:,-1]  =self.Domain.u[:,-2]  
+            else:
+                self.Domain.u[:,-1]  =self.BCs['bc_right_u']
+            if self.BCs['bc_right_v']=='zero_grad':
+                self.Domain.v[:,-1]  =self.Domain.v[:,-2]  
+            else:
+                self.Domain.v[:,-1]  =self.BCs['bc_right_v']
+            if self.BCs['bc_right_T']=='zero_grad':
+                self.Domain.T[:,-1]  =self.Domain.T[:,-2]  
+            else:
+                self.Domain.T[:,-1]  =self.BCs['bc_right_T']
+        
+        # South face
+        if self.BCs['bc_type_south']=='wall':
+            self.Domain.rho[0,:]=self.Domain.rho[1,:]
+            self.Domain.p[0,:]  =self.Domain.p[1,:]
+            self.Domain.u[0,:]  =0
+            self.Domain.v[0,:]  =0
+            self.Domain.T[0,:]  =self.BCs['bc_south_T']
+            
+        else:
+            if self.BCs['bc_south_rho']=='zero_grad':
+                self.Domain.rho[0,:]=self.Domain.rho[1,:]
+            else:
+                self.Domain.rho[0,:]=self.BCs['bc_south_rho']
+            if self.BCs['bc_south_p']=='zero_grad':
+                self.Domain.p[0,:]  =self.Domain.p[1,:]  
+            else:
+                self.Domain.p[0,:]  =self.BCs['bc_south_p']
+            if self.BCs['bc_south_u']=='zero_grad':
+                self.Domain.u[0,:]  =self.Domain.u[1,:]  
+            else:
+                self.Domain.u[0,:]  =self.BCs['bc_south_u']
+            if self.BCs['bc_south_v']=='zero_grad':
+                self.Domain.v[0,:]  =self.Domain.v[1,:]  
+            else:
+                self.Domain.v[0,:]  =self.BCs['bc_south_v']
+            if self.BCs['bc_south_T']=='zero_grad':
+                self.Domain.T[0,:]  =self.Domain.T[1,:]  
+            else:
+                self.Domain.T[0,:]  =self.BCs['bc_south_T']                
+            
+        # North face
+        if self.BCs['bc_type_north']=='wall':
+            self.Domain.rho[-1,:]=self.Domain.rho[-2,:]
+            self.Domain.p[-1,:]  =self.Domain.p[-2,:]
+            self.Domain.u[-1,:]  =0
+            self.Domain.v[-1,:]  =0
+            self.Domain.T[-1,:]  =self.BCs['bc_north_T']
+            
+        else:
+            if self.BCs['bc_north_rho']=='zero_grad':
+                self.Domain.rho[-1,:]=self.Domain.rho[-2,:]
+            else:
+                self.Domain.rho[-1,:]=self.BCs['bc_north_rho']
+            if self.BCs['bc_north_p']=='zero_grad':
+                self.Domain.p[-1,:]  =self.Domain.p[-2,:]  
+            else:
+                self.Domain.p[-1,:]  =self.BCs['bc_north_p']
+            if self.BCs['bc_north_u']=='zero_grad':
+                self.Domain.u[-1,:]  =self.Domain.u[-2,:]  
+            else:
+                self.Domain.u[-1,:]  =self.BCs['bc_north_u']
+            if self.BCs['bc_north_v']=='zero_grad':
+                self.Domain.v[-1,:]  =self.Domain.v[-2,:]  
+            else:
+                self.Domain.v[-1,:]  =self.BCs['bc_north_v']
+            if self.BCs['bc_north_T']=='zero_grad':
+                self.Domain.T[-1,:]  =self.Domain.T[-2,:]  
+            else:
+                self.Domain.T[-1,:]  =self.BCs['bc_north_T']
         
         # Conservative values at boundaries
         self.Domain.rhou[:,0]=self.Domain.rho[:,0]*self.Domain.u[:,0]
@@ -138,13 +317,31 @@ class TwoDimPlanarSolve():
         self.Domain.rhoE[:,0]=self.Domain.rho[:,0]*\
             (0.5*(self.Domain.u[:,0]**2+self.Domain.v[:,0]**2)+\
              self.Domain.Cv*self.Domain.T[:,0])
+        
+        self.Domain.rhou[:,-1]=self.Domain.rho[:,-1]*self.Domain.u[:,-1]
+        self.Domain.rhov[:,-1]=self.Domain.rho[:,-1]*self.Domain.v[:,-1]
+        self.Domain.rhoE[:,-1]=self.Domain.rho[:,-1]*\
+            (0.5*(self.Domain.u[:,-1]**2+self.Domain.v[:,-1]**2)+\
+             self.Domain.Cv*self.Domain.T[:,-1])
+
+        self.Domain.rhou[0,:]=self.Domain.rho[0,:]*self.Domain.u[0,:]
+        self.Domain.rhov[0,:]=self.Domain.rho[0,:]*self.Domain.v[0,:]
+        self.Domain.rhoE[0,:]=self.Domain.rho[0,:]*\
+            (0.5*(self.Domain.u[0,:]**2+self.Domain.v[0,:]**2)+\
+             self.Domain.Cv*self.Domain.T[0,:])
+
+        self.Domain.rhou[-1,:]=self.Domain.rho[-1,:]*self.Domain.u[-1,:]
+        self.Domain.rhov[-1,:]=self.Domain.rho[-1,:]*self.Domain.v[-1,:]
+        self.Domain.rhoE[-1,:]=self.Domain.rho[-1,:]*\
+            (0.5*(self.Domain.u[-1,:]**2+self.Domain.v[-1,:]**2)+\
+             self.Domain.Cv*self.Domain.T[-1,:])
     
     # Main compressible solver (1 time step)
     def Advance_Soln(self):
         rho=self.Domain.rho.copy()
         rhou=self.Domain.rhou.copy()
-        rhov=self.Domain.rhovcopy()
-        rhoE=self.Domain.rhoEcopy()
+        rhov=self.Domain.rhov.copy()
+        rhoE=self.Domain.rhoE.copy()
         drhodt=numpy.empty_like(rho)
         drhoudt=numpy.empty_like(rhou)
         drhovdt=numpy.empty_like(rhov)
@@ -160,35 +357,29 @@ class TwoDimPlanarSolve():
         ###################################################################
         
         # Density
-        drhodt[1:-1,1:-1] =self.compute_Flux(rho[1:-1,:-2], rho[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
-        drhodt[1:-1,1:-1]+=self.compute_Flux(rho[:-2,1:-1], rho[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
+        drhodt[1:-1,1:-1] =-self.compute_Flux(rho,self.Domain.u,self.Domain.v, self.dx, self.dy)
         
-        # x-momentum (convection)
-        drhoudt[1:-1,1:-1] =self.compute_Flux(rhou[1:-1,:-2], rhou[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
-        drhoudt[1:-1,1:-1]+=self.compute_Flux(rhou[:-2,1:-1], rhou[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
-        # x-momentum (source-stress and pressure)
-        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.u[1:-1,:-2], self.Domain.u[1:-1,1:-1],self.Domain.u[1:-1,2:],self.dx[1:-1,1:-1])
-        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.u[:-2,1:-1], self.Domain.u[1:-1,1:-1],self.Domain.u[2:,1:-1],self.dy[1:-1,1:-1])
-        drhoudt[1:-1,1:-1]+=self.compute_Flux(self.Domain.p[1:-1,:-2],self.Domain.p[1:-1,2:],1, 2*self.Domain.dx[1:-1,1:-1])
+        # Calculate shear stress arrays for momentum and energy
+        self.Calculate_Stress(self.Domain.u, self.Domain.v, self.dx, self.dy)
         
-        # y-momentum (convection)
-        drhovdt[1:-1,1:-1] =self.compute_Flux(rhov[1:-1,:-2], rhov[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
-        drhovdt[1:-1,1:-1]+=self.compute_Flux(rhov[:-2,1:-1], rhov[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
-        # y-momentum (source-stress and pressure)
-        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.v[1:-1,:-2], self.Domain.v[1:-1,1:-1],self.Domain.v[1:-1,2:],self.dx[1:-1,1:-1])
-        drhoudt[1:-1,1:-1]+=self.Source_Stress(self.Domain.v[:-2,1:-1], self.Domain.v[1:-1,1:-1],self.Domain.v[2:,1:-1],self.dy[1:-1,1:-1])
-        drhovdt[1:-1,1:-1]+=self.compute_Flux(self.Domain.p[:-2,1:-1],self.Domain.p[2:,1:-1],1, 2*self.dy[1:-1,1:-1])
+        # x-momentum (flux, stress, pressure)
+        drhoudt[1:-1,1:-1] =-self.compute_Flux(rhou,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhoudt[1:-1,1:-1]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
+        drhoudt[1:-1,1:-1]+=(self.Domain.p[1:-1,2:]-self.Domain.p[1:-1,:-2])/(2*self.Domain.dx[1:-1,1:-1])
         
-        # Energy (convection)
-        drhoEdt[1:-1,1:-1] =self.compute_Flux(rhoE[1:-1,:-2], rhoE[1:-1,2:], self.Domain.u[1:-1,1:-1], 2*self.dx[1:-1,1:-1])
-        drhoEdt[1:-1,1:-1]+=self.compute_Flux(rhoE[:-2,1:-1], rhoE[2:,1:-1], self.Domain.v[1:-1,1:-1], 2*self.dy[1:-1,1:-1])
-        # Energy (source-CS work)
-        drhoEdt[1:-1,1:-1]+=self.Source_CSWork()
-        # Energy (source-conduction)
-        drhoEdt[1:-1,1:-1]+=self.Source_Cond(self.Domain.T[1:-1,:-2], self.Domain.T[1:-1,1:-1],self.Domain.T[1:-1,2:],self.dx[1:-1,1:-1])
-        drhoEdt[1:-1,1:-1]+=self.Source_Cond(self.Domain.T[:-2,1:-1], self.Domain.T[1:-1,1:-1],self.Domain.T[2:,1:-1],self.dy[1:-1,1:-1])
+        # y-momentum (flux, stress, pressure)
+        drhovdt[1:-1,1:-1] =-self.compute_Flux(rhov,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhovdt[1:-1,1:-1]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
+        drhovdt[1:-1,1:-1]+=(self.Domain.p[2:,1:-1]-self.Domain.p[:-2,1:-1])/(2*self.Domain.dy[1:-1,1:-1])
         
-        # Compute new conservative values in new time time step
+        # Energy (flux, work, conduction)
+        drhoEdt[1:-1,1:-1] =-self.compute_Flux(rhoE,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhoEdt[1:-1,1:-1]+=self.Source_CSWork(self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhoEdt[1:-1,1:-1]-=self.Source_Cond(self.Domain.T,self.dx,self.dy)
+        
+        ###################################################################
+        # Compute new conservative values at new time step
+        ###################################################################
         dt=self.getdt()
         
         self.Domain.rho[1:-1,1:-1] =rho[1:-1,1:-1]  + dt * drhodt[1:-1,1:-1]
@@ -196,11 +387,14 @@ class TwoDimPlanarSolve():
         self.Domain.rhov[1:-1,1:-1]=rhov[1:-1,1:-1] + dt * drhovdt[1:-1,1:-1]
         self.Domain.rhoE[1:-1,1:-1]=rhoE[1:-1,1:-1] + dt * drhoEdt[1:-1,1:-1]
         
-        # Boundary conditions
+        ###################################################################
+        # Apply boundary conditions
+        ###################################################################
         self.Apply_BCs()
         
-        
-        # Output data to file (IN PROGRESS)
+        ###################################################################
+        # Output data to file?????
+        ###################################################################
         
         
 ##### FORMER EXPLICIT-TRANS CONDUCTION SOLVER INCLUDING BC CALCULATION #################

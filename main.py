@@ -8,7 +8,11 @@ Boundary condition options:
     
 Features to include (across all classes):
     -CoolProp library for material properties (track down needed functions)
+    -speed of sound calculation (SolverClasses?)
     -Fix biasing meshing tools (this script and GeomClasses)
+        ->Figure out biasing wrt dx and dy array sizes and mesh griding those (GeomClasses)
+    -File reader for settings
+    -
 
 @author: Joseph
 """
@@ -21,21 +25,21 @@ from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import datetime
 import os
+import CoolProp.CoolProp as CP
 
 #from GeomClasses import OneDimLine as OneDimLine
 from GeomClasses import TwoDimPlanar as TwoDimPlanar
 #import MatClasses as Mat
 import SolverClasses as Solvers
-#import CoolProp.CoolProp as CP
 import FileClasses
 
 ##########################################################################
 # ------------------------------ Geometry, Domain and BCs Setup
 #    Reference directions:
-#    Left-smallest x coordinate
-#    Right-largest x value
-#    North-largest y coordinate
-#    South-smallest y coordinate
+#    left-smallest x coordinate
+#    right-largest x value
+#    north-largest y coordinate
+#    south-smallest y coordinate
 ##########################################################################
 settings={} # Dictionary of problem settings
 BCs={} # Dictionary of boundary conditions
@@ -44,10 +48,11 @@ settings['Length']                  = 3*10**(-3)
 settings['Width']                   = 6*10**(-3)
 settings['Nodes_x']                 = 301
 settings['Nodes_y']                 = 601
-settings['k']                       = 0.023 # If using constant value
-settings['gamma']                   = 1.4
-settings['R']                       = 0.314 # Specific to fluid
-settings['mu']                      = 0.002
+settings['Fluid']                   = 'Air'
+settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
+settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
+settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
+settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])
 
 # Meshing details
 settings['bias_type_x']             = None
@@ -57,21 +62,25 @@ settings['bias_size_y']             = 10**(-6) # Smallest element size (IN PROGR
 
 # Boundary conditions
 BCs['bc_type_left']                 = 'inlet'
+BCs['bc_left_rho']                  = None
 BCs['bc_left_u']                    = None
 BCs['bc_left_v']                    = None
 BCs['bc_left_p']                    = None
 BCs['bc_left_T']                    = None
 BCs['bc_type_right']                = 'outlet'
+BCs['bc_right_rho']                 = None
 BCs['bc_right_u']                   = None
 BCs['bc_right_v']                   = None
 BCs['bc_right_p']                   = None
 BCs['bc_right_T']                   = None
 BCs['bc_type_south']                = 'wall'
+BCs['bc_south_rho']                 = None
 BCs['bc_south_u']                   = None
 BCs['bc_south_v']                   = None
 BCs['bc_south_p']                   = None
 BCs['bc_south_T']                   = 500
 BCs['bc_type_north']                = 'wall'
+BCs['bc_north_rho']                 = None
 BCs['bc_north_u']                   = None
 BCs['bc_north_v']                   = None
 BCs['bc_north_p']                   = None
@@ -85,6 +94,7 @@ settings['CFL']                     = 0.05
 settings['total_time_steps']        = 100
 
 
+print 'Initializing geometry package...'
 #domain=OneDimLine(L,Nx)
 domain=TwoDimPlanar(settings)
 domain.mesh()
@@ -92,8 +102,11 @@ domain.mesh()
 ##########################################################################
 # -------------------------------------Initialize solver and domain
 ##########################################################################
+
+print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 
+print 'Initializing domain...'
 domain.rho[1:-1,1:-1]=1.2
 domain.u[1:-1,1:-1]=0
 domain.v[1:-1,1:-1]=0
@@ -112,15 +125,33 @@ domain.rhoE[:,:]=domain.rho[:,:]*(0.5*(domain.u[:,:]**2+domain.v[:,:]**2) \
 ##########################################################################
 # -------------------------------------File setups
 ##########################################################################
+print 'Initializing files...'
 os.chdir('Tests')
-name=datetime.date()+'_'+datetime.time()
-output_file=FileClasses.FileOut(name, False)
+datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(datetime.now()))
+isBinFile=False
+
+#output_file=FileClasses.FileOut('Output_'+datTime, isBinFile)
+input_file=FileClasses.FileOut('Input_'+datTime, isBinFile)
+
+# Write headers to files
+input_file.header('INPUT')
+#output_file.header('OUTPUT')
+
+# Write input file with settings
+input_file.input_writer(settings, BCs)
 
 ##########################################################################
 # -------------------------------------Solve
 ##########################################################################
+print('######################################################\n')
+print('#              2D Navier-Stokes Solver               #\n')
+print('#              Created by J. Mark Epps               #\n')
+print('#          Part of Masters Thesis at UW 2018-2020    #\n')
+print('######################################################\n\n')
 
+print 'Solving:'
 for nt in range(settings['total_time_steps']):
+    print 'Time step %i of %i'%(nt+1, settings['total_time_steps'])
     solver.Advance_Soln()
 
 ##########################################################################
@@ -136,11 +167,11 @@ for nt in range(settings['total_time_steps']):
 #ax.set_ylabel('$y$ (m)')
 #ax.set_zlabel('T (K)')
 
-fig2=pyplot.figure(figsize=(7,7))
-pyplot.plot(domain.Y[:,1]*1000, domain.T[:,1],marker='x')
-pyplot.xlabel('$y$ (mm)')
-pyplot.ylabel('T (K)')
-pyplot.title('Temperature distribution at 2nd x')
-pyplot.xlim(5,6)
+#fig2=pyplot.figure(figsize=(7,7))
+#pyplot.plot(domain.Y[:,1]*1000, domain.T[:,1],marker='x')
+#pyplot.xlabel('$y$ (mm)')
+#pyplot.ylabel('T (K)')
+#pyplot.title('Temperature distribution at 2nd x')
+#pyplot.xlim(5,6)
 
-print('End of solver')
+print('Solver has finished its run')

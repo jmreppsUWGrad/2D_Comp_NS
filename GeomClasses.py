@@ -79,8 +79,9 @@ class TwoDimPlanar:
         self.Ny=settings['Nodes_y']
         self.x=numpy.zeros(self.Nx)
         self.y=numpy.zeros(self.Ny)
-        self.dx=numpy.zeros(self.Nx-1)
-        self.dy=numpy.zeros(self.Ny-1)
+        self.dx=numpy.zeros(self.Nx) # NOTE: SIZE MADE TO MATCH REST OF ARRAYS (FOR NOW)
+        self.dy=numpy.zeros(self.Ny) # NOTE: SIZE MADE TO MATCH REST OF ARRAYS (FOR NOW)
+        self.fluid=settings['Fluid']
         self.k=settings['k']
         self.gamma=settings['gamma']
         self.mu=settings['mu']
@@ -92,6 +93,9 @@ class TwoDimPlanar:
         self.ybias_elem={'OneWayUp': 0, 'OneWayDown': 0, 'TwoWayEnd': 0, 'TwoWayMid': 0}
         
         # Setup variable arrays
+        self.tau11=numpy.zeros((self.Ny, self.Nx)) # Shear stress arrays
+        self.tau12=numpy.zeros((self.Ny, self.Nx))
+        self.tau22=numpy.zeros((self.Ny, self.Nx))
         self.rhoE=numpy.zeros((self.Ny, self.Nx)) # Conservative arrays
         self.rhou=numpy.zeros((self.Ny,self.Nx))
         self.rhov=numpy.zeros((self.Ny,self.Nx))

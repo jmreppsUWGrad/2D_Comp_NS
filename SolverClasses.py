@@ -76,7 +76,7 @@ class TwoDimPlanarSolve():
     def __init__(self, geom_obj, settings, BCs):
         self.Domain=geom_obj # Geometry object
         self.CFL=settings['CFL']
-        self.Nt=settings['total_time_steps']
+#        self.Nt=settings['total_time_steps']
 #        self.conv=conv
         self.dx,self.dy=numpy.meshgrid(geom_obj.dx,geom_obj.dy)
         self.BCs=BCs
@@ -103,13 +103,30 @@ class TwoDimPlanarSolve():
         
     """
     # Flux computer (flux of conservative variables AND gradient calculations)
-    def compute_Flux(rho, u, v, dx, dy):
+    # Calculates for entire domain assuming periodicity in both dimensions
+    # (BCs other than Periodicity is applied after calculating new values)
+    def compute_Flux(self, rho, u, v, dx, dy):
         dx*=2 # Central difference schemes
         dy*=2
+#        ddx=numpy.empty_like(u)
+#        ddy=numpy.empty_like(v)
         rhou=rho*u
         rhov=rho*v
         ddx=(rhou[1:-1,2:]-rhou[1:-1,:-2])/dx[1:-1,1:-1]
         ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
+
+#        ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/dx[:,1:-1]
+#        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/dy[1:-1,:]
+        
+#        ddx[:,0] =(rhou[:,1]-rhou[:,-1])/dx[:,0]
+#        ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/dx[:,-1]
+#        
+#        ddy[0,:] =(rhov[1,:]-rhov[-1,:])/dy[0,:]
+#        ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/dy[-1,:]
+        
+        dx/=2.0 # Reset original discretizations
+        dy/=2.0
+        
         return ddx+ddy
     
     # Shear stress gradient calculation for momentum
@@ -182,12 +199,12 @@ class TwoDimPlanarSolve():
         qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
         qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
         
-        qy[0,:] =-k*(T[1,:]-T[0,:])/dy[1:-1,:]
-        qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[1:-1,:]
+        qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
+        qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
         
         return self.compute_Flux(1.0,qx,qy,dx,dy)
     
-    # Bondary condition handler
+    # Bondary condition handler (not including periodic BCs)
     def Apply_BCs(self):
         # Start with wall BCs (implied 0 gradients and no slip)
         
@@ -197,9 +214,12 @@ class TwoDimPlanarSolve():
             self.Domain.p[:,0]  =self.Domain.p[:,1]
             self.Domain.u[:,0]  =0
             self.Domain.v[:,0]  =0
-            self.Domain.T[:,0]  =self.BCs['bc_left_T']
+            if self.BCs['bc_left_T']=='zero_grad':
+                self.Domain.T[:,0]  =self.Domain.T[:,1]
+            else:
+                self.Domain.T[:,0]  =self.BCs['bc_left_T']
             
-        else:
+        elif self.BCs['bc_type_left']!='periodic':
             if self.BCs['bc_left_rho']=='zero_grad':
                 self.Domain.rho[:,0]=self.Domain.rho[:,1]
             else:
@@ -227,9 +247,12 @@ class TwoDimPlanarSolve():
             self.Domain.p[:,-1]  =self.Domain.p[:,-2]
             self.Domain.u[:,-1]  =0
             self.Domain.v[:,-1]  =0
-            self.Domain.T[:,-1]  =self.BCs['bc_right_T']
+            if self.BCs['bc_right_T']=='zero_grad':
+                self.Domain.T[:,-1]  =self.Domain.T[:,-2]
+            else:
+                self.Domain.T[:,-1]  =self.BCs['bc_right_T']
         
-        else:
+        elif self.BCs['bc_type_right']!='periodic':
             if self.BCs['bc_right_rho']=='zero_grad':
                 self.Domain.rho[:,-1]=self.Domain.rho[:,-2]
             else:
@@ -257,9 +280,12 @@ class TwoDimPlanarSolve():
             self.Domain.p[0,:]  =self.Domain.p[1,:]
             self.Domain.u[0,:]  =0
             self.Domain.v[0,:]  =0
-            self.Domain.T[0,:]  =self.BCs['bc_south_T']
+            if self.BCs['bc_south_T']=='zero_grad':
+                self.Domain.T[0,:]  =self.Domain.T[1,:]
+            else:
+                self.Domain.T[0,:]  =self.BCs['bc_south_T']
             
-        else:
+        elif self.BCs['bc_type_south']!='periodic':
             if self.BCs['bc_south_rho']=='zero_grad':
                 self.Domain.rho[0,:]=self.Domain.rho[1,:]
             else:
@@ -287,9 +313,12 @@ class TwoDimPlanarSolve():
             self.Domain.p[-1,:]  =self.Domain.p[-2,:]
             self.Domain.u[-1,:]  =0
             self.Domain.v[-1,:]  =0
-            self.Domain.T[-1,:]  =self.BCs['bc_north_T']
+            if self.BCs['bc_north_T']=='zero_grad':
+                self.Domain.T[-1,:]  =self.Domain.T[-2,:]
+            else:
+                self.Domain.T[-1,:]  =self.BCs['bc_north_T']
             
-        else:
+        elif self.BCs['bc_type_north']!='periodic':
             if self.BCs['bc_north_rho']=='zero_grad':
                 self.Domain.rho[-1,:]=self.Domain.rho[-2,:]
             else:
@@ -312,29 +341,33 @@ class TwoDimPlanarSolve():
                 self.Domain.T[-1,:]  =self.BCs['bc_north_T']
         
         # Conservative values at boundaries
-        self.Domain.rhou[:,0]=self.Domain.rho[:,0]*self.Domain.u[:,0]
-        self.Domain.rhov[:,0]=self.Domain.rho[:,0]*self.Domain.v[:,0]
-        self.Domain.rhoE[:,0]=self.Domain.rho[:,0]*\
-            (0.5*(self.Domain.u[:,0]**2+self.Domain.v[:,0]**2)+\
-             self.Domain.Cv*self.Domain.T[:,0])
+        if self.BCs['bc_type_left']!='periodic':
+            self.Domain.rhou[:,0]=self.Domain.rho[:,0]*self.Domain.u[:,0]
+            self.Domain.rhov[:,0]=self.Domain.rho[:,0]*self.Domain.v[:,0]
+            self.Domain.rhoE[:,0]=self.Domain.rho[:,0]*\
+                (0.5*(self.Domain.u[:,0]**2+self.Domain.v[:,0]**2)+\
+                 self.Domain.Cv*self.Domain.T[:,0])
         
-        self.Domain.rhou[:,-1]=self.Domain.rho[:,-1]*self.Domain.u[:,-1]
-        self.Domain.rhov[:,-1]=self.Domain.rho[:,-1]*self.Domain.v[:,-1]
-        self.Domain.rhoE[:,-1]=self.Domain.rho[:,-1]*\
-            (0.5*(self.Domain.u[:,-1]**2+self.Domain.v[:,-1]**2)+\
-             self.Domain.Cv*self.Domain.T[:,-1])
-
-        self.Domain.rhou[0,:]=self.Domain.rho[0,:]*self.Domain.u[0,:]
-        self.Domain.rhov[0,:]=self.Domain.rho[0,:]*self.Domain.v[0,:]
-        self.Domain.rhoE[0,:]=self.Domain.rho[0,:]*\
-            (0.5*(self.Domain.u[0,:]**2+self.Domain.v[0,:]**2)+\
-             self.Domain.Cv*self.Domain.T[0,:])
-
-        self.Domain.rhou[-1,:]=self.Domain.rho[-1,:]*self.Domain.u[-1,:]
-        self.Domain.rhov[-1,:]=self.Domain.rho[-1,:]*self.Domain.v[-1,:]
-        self.Domain.rhoE[-1,:]=self.Domain.rho[-1,:]*\
-            (0.5*(self.Domain.u[-1,:]**2+self.Domain.v[-1,:]**2)+\
-             self.Domain.Cv*self.Domain.T[-1,:])
+        if self.BCs['bc_type_right']!='periodic':
+            self.Domain.rhou[:,-1]=self.Domain.rho[:,-1]*self.Domain.u[:,-1]
+            self.Domain.rhov[:,-1]=self.Domain.rho[:,-1]*self.Domain.v[:,-1]
+            self.Domain.rhoE[:,-1]=self.Domain.rho[:,-1]*\
+                (0.5*(self.Domain.u[:,-1]**2+self.Domain.v[:,-1]**2)+\
+                 self.Domain.Cv*self.Domain.T[:,-1])
+        
+        if self.BCs['bc_type_south']!='periodic':
+            self.Domain.rhou[0,:]=self.Domain.rho[0,:]*self.Domain.u[0,:]
+            self.Domain.rhov[0,:]=self.Domain.rho[0,:]*self.Domain.v[0,:]
+            self.Domain.rhoE[0,:]=self.Domain.rho[0,:]*\
+                (0.5*(self.Domain.u[0,:]**2+self.Domain.v[0,:]**2)+\
+                 self.Domain.Cv*self.Domain.T[0,:])
+        
+        if self.BCs['bc_type_north']!='periodic':
+            self.Domain.rhou[-1,:]=self.Domain.rho[-1,:]*self.Domain.u[-1,:]
+            self.Domain.rhov[-1,:]=self.Domain.rho[-1,:]*self.Domain.v[-1,:]
+            self.Domain.rhoE[-1,:]=self.Domain.rho[-1,:]*\
+                (0.5*(self.Domain.u[-1,:]**2+self.Domain.v[-1,:]**2)+\
+                 self.Domain.Cv*self.Domain.T[-1,:])
     
     # Main compressible solver (1 time step)
     def Advance_Soln(self):
@@ -342,38 +375,40 @@ class TwoDimPlanarSolve():
         rhou=self.Domain.rhou.copy()
         rhov=self.Domain.rhov.copy()
         rhoE=self.Domain.rhoE.copy()
-        drhodt=numpy.empty_like(rho)
-        drhoudt=numpy.empty_like(rhou)
-        drhovdt=numpy.empty_like(rhov)
-        drhoEdt=numpy.empty_like(rhoE)
+        drhodt=numpy.zeros_like(rho)
+        drhoudt=numpy.zeros_like(rhou)
+        drhovdt=numpy.zeros_like(rhov)
+        drhoEdt=numpy.zeros_like(rhoE)
         
         ###################################################################
         # Compute primitive variables
         ###################################################################
         self.Domain.primitiveFromConserv()
-        
+
         ###################################################################
         # Compute time deriviatives of conservatives (2nd order central schemes)
         ###################################################################
-        
-        # Density
-        drhodt[1:-1,1:-1] =-self.compute_Flux(rho,self.Domain.u,self.Domain.v, self.dx, self.dy)
-        
         # Calculate shear stress arrays for momentum and energy
         self.Calculate_Stress(self.Domain.u, self.Domain.v, self.dx, self.dy)
-        
-        # x-momentum (flux, stress, pressure)
+
+        # Density
+        drhodt[1:-1,1:-1] =-self.compute_Flux(rho,self.Domain.u,self.Domain.v, self.dx, self.dy)
+
+        # x-momentum (flux, pressure, shear stress)
         drhoudt[1:-1,1:-1] =-self.compute_Flux(rhou,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhoudt[1:-1,1:-1]-=self.compute_Flux(1.0, self.Domain.p, numpy.zeros_like(self.Domain.v), self.dx, self.dy)
+#        drhoudt[1:-1,1:-1]-=(self.Domain.p[1:-1,2:]-self.Domain.p[1:-1,:-2])/(2*self.dx[1:-1,1:-1])
         drhoudt[1:-1,1:-1]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
-        drhoudt[1:-1,1:-1]+=(self.Domain.p[1:-1,2:]-self.Domain.p[1:-1,:-2])/(2*self.Domain.dx[1:-1,1:-1])
-        
+
         # y-momentum (flux, stress, pressure)
         drhovdt[1:-1,1:-1] =-self.compute_Flux(rhov,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhovdt[1:-1,1:-1]-=self.compute_Flux(1.0, numpy.zeros_like(self.Domain.u), self.Domain.p, self.dx, self.dy)
+#        drhovdt[1:-1,1:-1]-=(self.Domain.p[2:,1:-1]-self.Domain.p[:-2,1:-1])/(2*self.dy[1:-1,1:-1])
         drhovdt[1:-1,1:-1]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
-        drhovdt[1:-1,1:-1]+=(self.Domain.p[2:,1:-1]-self.Domain.p[:-2,1:-1])/(2*self.Domain.dy[1:-1,1:-1])
         
-        # Energy (flux, work, conduction)
+        # Energy (flux, pressure-work, shear-work, conduction)
         drhoEdt[1:-1,1:-1] =-self.compute_Flux(rhoE,self.Domain.u,self.Domain.v, self.dx, self.dy)
+        drhoEdt[1:-1,1:-1]-=self.compute_Flux(self.Domain.p,self.Domain.u,self.Domain.v, self.dx, self.dy)
         drhoEdt[1:-1,1:-1]+=self.Source_CSWork(self.Domain.u,self.Domain.v, self.dx, self.dy)
         drhoEdt[1:-1,1:-1]-=self.Source_Cond(self.Domain.T,self.dx,self.dy)
         
@@ -382,16 +417,16 @@ class TwoDimPlanarSolve():
         ###################################################################
         dt=self.getdt()
         
-        self.Domain.rho[1:-1,1:-1] =rho[1:-1,1:-1]  + dt * drhodt[1:-1,1:-1]
-        self.Domain.rhou[1:-1,1:-1]=rhou[1:-1,1:-1] + dt * drhoudt[1:-1,1:-1]
-        self.Domain.rhov[1:-1,1:-1]=rhov[1:-1,1:-1] + dt * drhovdt[1:-1,1:-1]
-        self.Domain.rhoE[1:-1,1:-1]=rhoE[1:-1,1:-1] + dt * drhoEdt[1:-1,1:-1]
+        self.Domain.rho =rho  + dt * drhodt
+        self.Domain.rhou=rhou + dt * drhoudt
+        self.Domain.rhov=rhov + dt * drhovdt
+        self.Domain.rhoE=rhoE + dt * drhoEdt
         
         ###################################################################
         # Apply boundary conditions
         ###################################################################
         self.Apply_BCs()
-        
+            
         ###################################################################
         # Output data to file?????
         ###################################################################

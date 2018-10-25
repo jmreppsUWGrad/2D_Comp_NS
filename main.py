@@ -12,7 +12,7 @@ Features to include (across all classes):
     -Fix biasing meshing tools (this script and GeomClasses)
         ->Figure out biasing wrt dx and dy array sizes and mesh griding those (GeomClasses)
     -File reader for settings
-    -
+    -periodic boundary conditions (SolverClasses)
 
 @author: Joseph
 """
@@ -44,10 +44,10 @@ import FileClasses
 settings={} # Dictionary of problem settings
 BCs={} # Dictionary of boundary conditions
 # Geometry details
-settings['Length']                  = 3*10**(-3)
-settings['Width']                   = 6*10**(-3)
-settings['Nodes_x']                 = 301
-settings['Nodes_y']                 = 601
+settings['Length']                  = 4.0
+settings['Width']                   = 1.0
+settings['Nodes_x']                 = 51
+settings['Nodes_y']                 = 51
 settings['Fluid']                   = 'Air'
 settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
 settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
@@ -61,36 +61,36 @@ settings['bias_type_y']             = None
 settings['bias_size_y']             = 10**(-6) # Smallest element size (IN PROGRESS)
 
 # Boundary conditions
-BCs['bc_type_left']                 = 'inlet'
+BCs['bc_type_left']                 = 'wall'
 BCs['bc_left_rho']                  = None
 BCs['bc_left_u']                    = None
 BCs['bc_left_v']                    = None
 BCs['bc_left_p']                    = None
-BCs['bc_left_T']                    = None
-BCs['bc_type_right']                = 'outlet'
+BCs['bc_left_T']                    = 'zero_grad'
+BCs['bc_type_right']                = 'wall'
 BCs['bc_right_rho']                 = None
 BCs['bc_right_u']                   = None
 BCs['bc_right_v']                   = None
 BCs['bc_right_p']                   = None
-BCs['bc_right_T']                   = None
+BCs['bc_right_T']                   = 'zero_grad'
 BCs['bc_type_south']                = 'wall'
 BCs['bc_south_rho']                 = None
 BCs['bc_south_u']                   = None
 BCs['bc_south_v']                   = None
 BCs['bc_south_p']                   = None
-BCs['bc_south_T']                   = 500
+BCs['bc_south_T']                   = 1000
 BCs['bc_type_north']                = 'wall'
 BCs['bc_north_rho']                 = None
 BCs['bc_north_u']                   = None
 BCs['bc_north_v']                   = None
 BCs['bc_north_p']                   = None
-BCs['bc_north_T']                   = 500
+BCs['bc_north_T']                   = 300
 
 # Initial conditions ????
 
 
 # Time advancement
-settings['CFL']                     = 0.05
+settings['CFL']                     = 0.01
 settings['total_time_steps']        = 100
 
 
@@ -107,7 +107,7 @@ print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 
 print 'Initializing domain...'
-domain.rho[1:-1,1:-1]=1.2
+domain.rho[1:-1,1:-1]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
 domain.u[1:-1,1:-1]=0
 domain.v[1:-1,1:-1]=0
 domain.T[1:-1,1:-1]=300
@@ -139,15 +139,16 @@ input_file.header('INPUT')
 
 # Write input file with settings
 input_file.input_writer(settings, BCs)
+input_file.close()
 
 ##########################################################################
 # -------------------------------------Solve
 ##########################################################################
+print('######################################################')
+print('#              2D Navier-Stokes Solver               #')
+print('#              Created by J. Mark Epps               #')
+print('#          Part of Masters Thesis at UW 2018-2020    #')
 print('######################################################\n')
-print('#              2D Navier-Stokes Solver               #\n')
-print('#              Created by J. Mark Epps               #\n')
-print('#          Part of Masters Thesis at UW 2018-2020    #\n')
-print('######################################################\n\n')
 
 print 'Solving:'
 for nt in range(settings['total_time_steps']):
@@ -157,16 +158,18 @@ for nt in range(settings['total_time_steps']):
 ##########################################################################
 # ------------------------------------Plots
 ##########################################################################
-#fig=pyplot.figure(figsize=(7, 7), dpi=100)
-#ax = fig.gca(projection='3d')
-#ax.plot_surface(domain2.X, domain2.Y, domain2.T, rstride=1, cstride=1, cmap=cm.viridis,linewidth=0, antialiased=True)
+# 2D plot
+fig=pyplot.figure(figsize=(7, 7), dpi=100)
+ax = fig.gca(projection='3d')
+ax.plot_surface(domain.X, domain.Y, domain.T, rstride=1, cstride=1, cmap=cm.viridis,linewidth=0, antialiased=True)
 #ax.set_xlim(0,0.001)
 #ax.set_ylim(0.005,0.006)
-#ax.set_zlim(300, 700)
-#ax.set_xlabel('$x$ (m)')
-#ax.set_ylabel('$y$ (m)')
-#ax.set_zlabel('T (K)')
+ax.set_zlim(300, 1000)
+ax.set_xlabel('$x$ (m)')
+ax.set_ylabel('$y$ (m)')
+ax.set_zlabel('T (K)')
 
+# 1D Plot
 #fig2=pyplot.figure(figsize=(7,7))
 #pyplot.plot(domain.Y[:,1]*1000, domain.T[:,1],marker='x')
 #pyplot.xlabel('$y$ (mm)')
@@ -174,4 +177,13 @@ for nt in range(settings['total_time_steps']):
 #pyplot.title('Temperature distribution at 2nd x')
 #pyplot.xlim(5,6)
 
+# Velocity Quiver plot and pressure contour
+pl=2
+fig3=pyplot.figure(figsize=(7, 7), dpi=100)
+pyplot.quiver(domain.X[::pl, ::pl], domain.Y[::pl, ::pl], \
+              domain.u[::pl, ::pl], domain.v[::pl, ::pl]) 
+pyplot.contourf(domain.X, domain.Y, domain.p, alpha=0.5, cmap=cm.viridis)  
+pyplot.colorbar()
+pyplot.xlabel('$x$ (m)')
+pyplot.ylabel('$y$ (m)')
 print('Solver has finished its run')

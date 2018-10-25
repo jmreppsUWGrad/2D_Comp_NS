@@ -1,0 +1,26 @@
+    def compute_Flux(self, rho, u, v, dx, dy):
+        dx*=2 # Central difference schemes
+        dy*=2
+        rhou=rho*u
+        rhov=rho*v
+        ddx=(rhou[1:-1,2:]-rhou[1:-1,:-2])/dx[1:-1,1:-1]
+        ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
+        return ddx+ddy
+
+    def compute_Flux(self, rho, u, v, dx, dy):
+        dx*=2 # Central difference schemes
+        dy*=2
+        ddx=numpy.empty_like(rho)
+        ddy=numpy.empty_like(rho)
+        rhou=rho*u
+        rhov=rho*v
+        ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/dx[:,1:-1]
+        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/dy[1:-1,:]
+        
+        ddx[:,0] =(rhou[:,1]-rhou[:,-1])/dx[:,0]
+        ddx[:,-1]=(rhou[:,0]-rhou[:,:-2])/dx[:,-1]
+        
+        ddy[0,:] =(rhov[1,:]-rhov[-1,:])/dy[0,:]
+        ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/dy[-1,:]
+        
+        return ddx+ddy

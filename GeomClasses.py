@@ -106,7 +106,7 @@ class TwoDimPlanar:
         self.p=numpy.zeros((self.Ny,self.Nx))
         
         # Other useful calculations (put elsewhere??)
-        self.Cv=self.mat_prop['R']/(self.mat_prop['gamma']-1)
+        self.Cv=self.R/(self.gamma-1)
         
     # Discretize domain and save dx and dy
     def mesh(self):

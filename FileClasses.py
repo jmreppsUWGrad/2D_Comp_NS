@@ -45,7 +45,7 @@ class FileOut():
             self.fout.write('\n')
         
         self.fout.write('\nTime advancement:\n')
-        keys=['CFL','total_time_steps']
+        keys=['CFL','total_time_steps', 'Time_Scheme']
         for i in keys:
             self.fout.write(i)
             self.fout.write(':')

@@ -164,13 +164,15 @@ class TwoDimPlanar:
         
         self.isMeshed=True
     
-    def primitiveFromConserv(self):
-        self.u=self.rhou/self.rho
-        self.v=self.rhov/self.rho
-        self.T=(self.rhoE/self.rho-0.5*(self.u**2+self.v**2))/self.Cv
+    def primitiveFromConserv(self, rho, rhou, rhov, rhoE):
+        u=rhou/rho
+        v=rhov/rho
+        T=(rhoE/rho-0.5*(u**2+v**2))/self.Cv
         
         # Ideal gas law assumed
-        self.p=self.rho*self.R*self.T
+        p=rho*self.R*T
+        
+        return u,v,p,T
     
     # Calculate temperature dependent properties (unsure if this will be the spot)
     def calcTempDepProp(self):

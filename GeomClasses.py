@@ -100,10 +100,10 @@ class TwoDimPlanar:
         self.rhou=numpy.zeros((self.Ny,self.Nx))
         self.rhov=numpy.zeros((self.Ny,self.Nx))
         self.rho=numpy.zeros((self.Ny,self.Nx)) # Primitive arrays
-        self.T=numpy.zeros((self.Ny, self.Nx))
-        self.u=numpy.zeros((self.Ny,self.Nx))
-        self.v=numpy.zeros((self.Ny,self.Nx))
-        self.p=numpy.zeros((self.Ny,self.Nx))
+#        self.T=numpy.zeros((self.Ny, self.Nx))
+#        self.u=numpy.zeros((self.Ny,self.Nx))
+#        self.v=numpy.zeros((self.Ny,self.Nx))
+#        self.p=numpy.zeros((self.Ny,self.Nx))
         
         # Other useful calculations (put elsewhere??)
         self.Cv=self.R/(self.gamma-1)

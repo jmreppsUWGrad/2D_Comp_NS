@@ -156,7 +156,7 @@ class runge_kutta():
         if scheme.upper() not in scheme_data.keys():
             print "Unrecognized Runge Kutta scheme " + scheme
             print "Select from : ", sorted(self.listSupportedSchemes())
-            print "Or 'Explicit' "
+            print "Or 'Euler' "
             self.Nk=-1
             return
         self.rk_substep_fraction =   scheme_data[self.scheme]["rk_substep_fraction"]

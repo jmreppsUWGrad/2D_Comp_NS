@@ -80,14 +80,16 @@ class TwoDimPlanarSolve():
         self.time_scheme=settings['Time_Scheme']
 #        self.Nt=settings['total_time_steps']
 #        self.conv=conv
+        self.gx=settings['Gravity_x']
+        self.gy=settings['Gravity_y']
         self.dx,self.dy=numpy.meshgrid(geom_obj.dx,geom_obj.dy)
         self.BCs=BCs
     
-    # Time step check with all dx and dys for stability (CHANGE TO CFL NUMBER CHECK)
-    def getdt(self):
-        dx=min(numpy.amin(self.dx),numpy.amin(self.dy))
-        c=numpy.sqrt(self.Domain.gamma*self.Domain.R*numpy.amax(self.Domain.T)) # ADD SPEED OF SOUND RETRIEVAL
-        return self.CFL*dx/(c)
+    # Time step check with dx, dy, T and CFL number
+    def getdt(self, T):
+        dx=numpy.sqrt(self.dx**2+self.dy**2)
+        c=numpy.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
+        return numpy.amin(self.CFL*dx/(c))
 
     # Convergence checker (REMOVE? NO IMPLICIT CALCULATIONS DONE)
     def CheckConv(self, Tprev, Tnew):
@@ -212,164 +214,224 @@ class TwoDimPlanarSolve():
         
         # Left face
         if self.BCs['bc_type_left']=='wall':
-            rho[:,0]=rho[:,1]
+#            print 'Left: wall'
             p[:,0]  =p[:,1]
-            u[:,0]  =0
-            v[:,0]  =0
-            if self.BCs['bc_left_T']=='zero_grad':
+            rhou[:,0]  =0
+            rhov[:,0]  =0
+            if (type(self.BCs['bc_left_T']) is str)\
+                and (self.BCs['bc_left_T']=='zero_grad'):
                 T[:,0]  =T[:,1]
             else:
                 T[:,0]  =self.BCs['bc_left_T']
+            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
+            rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
             
         elif self.BCs['bc_type_left']!='periodic':
-            if self.BCs['bc_left_rho']=='zero_grad':
+#            print 'Left: non-periodic'
+            if (type(self.BCs['bc_left_rho']) is str)\
+                and (self.BCs['bc_left_rho']=='zero_grad'):
                 rho[:,0]=rho[:,1]
             else:
                 rho[:,0]=self.BCs['bc_left_rho']
-            if self.BCs['bc_left_p']=='zero_grad':
+            if (type(self.BCs['bc_left_p']) is str)\
+                and (self.BCs['bc_left_p']=='zero_grad'):
                 p[:,0]  =p[:,1]
             else:
                 p[:,0]  =self.BCs['bc_left_p']
-            if self.BCs['bc_left_u']=='zero_grad':
+            if (type(self.BCs['bc_left_u']) is str)\
+                and (self.BCs['bc_left_u']=='zero_grad'):
                 u[:,0]  =u[:,1]
             else:
                 u[:,0]  =self.BCs['bc_left_u']
-            if self.BCs['bc_left_v']=='zero_grad':
+            if (type(self.BCs['bc_left_v']) is str)\
+                and (self.BCs['bc_left_v']=='zero_grad'):
                 v[:,0]  =v[:,1]
             else:
                 v[:,0]  =self.BCs['bc_left_v']    
-            if self.BCs['bc_left_T']=='zero_grad':
+            if (type(self.BCs['bc_left_T']) is str)\
+                and (self.BCs['bc_left_T']=='zero_grad'):
                 T[:,0]  =T[:,1]
             else:
                 T[:,0]  =self.BCs['bc_left_T']
-        
-        # Right face
-        if self.BCs['bc_type_right']=='wall':
-            rho[:,-1]=rho[:,-2]
-            p[:,-1]  =p[:,-2]
-            u[:,-1]  =0
-            v[:,-1]  =0
-            if self.BCs['bc_right_T']=='zero_grad':
-                T[:,-1]  =T[:,-2]
-            else:
-                T[:,-1]  =self.BCs['bc_right_T']
-        
-        elif self.BCs['bc_type_right']!='periodic':
-            if self.BCs['bc_right_rho']=='zero_grad':
-                rho[:,-1]=rho[:,-2]
-            else:
-                rho[:,-1]=self.BCs['bc_right_rho']
-            if self.BCs['bc_right_p']=='zero_grad':
-                p[:,-1]  =p[:,-2]  
-            else:
-                p[:,-1]  =self.BCs['bc_right_p']
-            if self.BCs['bc_right_u']=='zero_grad':
-                u[:,-1]  =u[:,-2]  
-            else:
-                u[:,-1]  =self.BCs['bc_right_u']
-            if self.BCs['bc_right_v']=='zero_grad':
-                v[:,-1]  =v[:,-2]  
-            else:
-                v[:,-1]  =self.BCs['bc_right_v']
-            if self.BCs['bc_right_T']=='zero_grad':
-                T[:,-1]  =T[:,-2]  
-            else:
-                T[:,-1]  =self.BCs['bc_right_T']
-        
-        # South face
-        if self.BCs['bc_type_south']=='wall':
-            rho[0,:]=rho[1,:]
-            p[0,:]  =p[1,:]
-            u[0,:]  =0
-            v[0,:]  =0
-            if self.BCs['bc_south_T']=='zero_grad':
-                T[0,:]  =T[1,:]
-            else:
-                T[0,:]  =self.BCs['bc_south_T']
             
-        elif self.BCs['bc_type_south']!='periodic':
-            if self.BCs['bc_south_rho']=='zero_grad':
-                rho[0,:]=rho[1,:]
-            else:
-                rho[0,:]=self.BCs['bc_south_rho']
-            if self.BCs['bc_south_p']=='zero_grad':
-                p[0,:]  =p[1,:]  
-            else:
-                p[0,:]  =self.BCs['bc_south_p']
-            if self.BCs['bc_south_u']=='zero_grad':
-                u[0,:]  =u[1,:]  
-            else:
-                u[0,:]  =self.BCs['bc_south_u']
-            if self.BCs['bc_south_v']=='zero_grad':
-                v[0,:]  =v[1,:]  
-            else:
-                v[0,:]  =self.BCs['bc_south_v']
-            if self.BCs['bc_south_T']=='zero_grad':
-                T[0,:]  =T[1,:]  
-            else:
-                T[0,:]  =self.BCs['bc_south_T']                
-            
-        # North face
-        if self.BCs['bc_type_north']=='wall':
-            rho[-1,:]=rho[-2,:]
-            p[-1,:]  =p[-2,:]
-            u[-1,:]  =0
-            v[-1,:]  =0
-            if self.BCs['bc_north_T']=='zero_grad':
-                T[-1,:]  =T[-2,:]
-            else:
-                T[-1,:]  =self.BCs['bc_north_T']
-            
-        elif self.BCs['bc_type_north']!='periodic':
-            if self.BCs['bc_north_rho']=='zero_grad':
-                rho[-1,:]=rho[-2,:]
-            else:
-                rho[-1,:]=self.BCs['bc_north_rho']
-            if self.BCs['bc_north_p']=='zero_grad':
-                p[-1,:]  =p[-2,:]  
-            else:
-                p[-1,:]  =self.BCs['bc_north_p']
-            if self.BCs['bc_north_u']=='zero_grad':
-                u[-1,:]  =u[-2,:]  
-            else:
-                u[-1,:]  =self.BCs['bc_north_u']
-            if self.BCs['bc_north_v']=='zero_grad':
-                v[-1,:]  =v[-2,:]  
-            else:
-                v[-1,:]  =self.BCs['bc_north_v']
-            if self.BCs['bc_north_T']=='zero_grad':
-                T[-1,:]  =T[-2,:]  
-            else:
-                T[-1,:]  =self.BCs['bc_north_T']
-        
-        # Conservative values at boundaries
-        if self.BCs['bc_type_left']!='periodic':
             rhou[:,0]=rho[:,0]*u[:,0]
             rhov[:,0]=rho[:,0]*v[:,0]
             rhoE[:,0]=rho[:,0]*\
                 (0.5*(u[:,0]**2+v[:,0]**2)+\
                  self.Domain.Cv*T[:,0])
         
-        if self.BCs['bc_type_right']!='periodic':
+        # Right face
+        if self.BCs['bc_type_right']=='wall':
+#            print 'Right: wall'
+            p[:,-1]  =p[:,-2]
+            rhou[:,-1]  =0
+            rhov[:,-1]  =0
+            if (type(self.BCs['bc_right_T']) is str)\
+                and (self.BCs['bc_right_T']=='zero_grad'):
+                T[:,-1]  =T[:,-2]
+            else:
+                T[:,-1]  =self.BCs['bc_right_T']
+            rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
+            rhoE[:,-1]=rho[:,-1]*self.Domain.Cv*T[:,-1]
+        
+        elif self.BCs['bc_type_right']!='periodic':
+#            print 'Right: non-periodic'
+            if (type(self.BCs['bc_right_rho']) is str)\
+                and (self.BCs['bc_right_rho']=='zero_grad'):
+                rho[:,-1]=rho[:,-2]
+            else:
+                rho[:,-1]=self.BCs['bc_right_rho']
+            if (type(self.BCs['bc_right_p']) is str)\
+                and (self.BCs['bc_right_p']=='zero_grad'):
+                p[:,-1]  =p[:,-2]  
+            else:
+                p[:,-1]  =self.BCs['bc_right_p']
+            if (type(self.BCs['bc_right_u']) is str)\
+                and (self.BCs['bc_right_u']=='zero_grad'):
+                u[:,-1]  =u[:,-2]  
+            else:
+                u[:,-1]  =self.BCs['bc_right_u']
+            if (type(self.BCs['bc_right_v']) is str)\
+                and (self.BCs['bc_right_v']=='zero_grad'):
+                v[:,-1]  =v[:,-2]  
+            else:
+                v[:,-1]  =self.BCs['bc_right_v']
+            if (type(self.BCs['bc_right_T']) is str)\
+                and (self.BCs['bc_right_T']=='zero_grad'):
+                T[:,-1]  =T[:,-2]  
+            else:
+                T[:,-1]  =self.BCs['bc_right_T']
+            
             rhou[:,-1]=rho[:,-1]*u[:,-1]
             rhov[:,-1]=rho[:,-1]*v[:,-1]
             rhoE[:,-1]=rho[:,-1]*\
                 (0.5*(u[:,-1]**2+v[:,-1]**2)+\
                  self.Domain.Cv*T[:,-1])
         
-        if self.BCs['bc_type_south']!='periodic':
+        # South face
+        if self.BCs['bc_type_south']=='wall':
+#            print 'South: wall'
+            p[0,:]  =p[1,:]
+            rhou[0,:]  =0
+            rhov[0,:]  =0
+            if (type(self.BCs['bc_south_T']) is str)\
+                and (self.BCs['bc_south_T']=='zero_grad'):
+                T[0,:]  =T[1,:]
+            else:
+                T[0,:]  =self.BCs['bc_south_T']
+            rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
+            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
+            
+        elif self.BCs['bc_type_south']!='periodic':
+#            print 'South: non-periodic'
+            if (type(self.BCs['bc_south_rho']) is str)\
+                and (self.BCs['bc_south_rho']=='zero_grad'):
+                rho[0,:]=rho[1,:]
+            else:
+                rho[0,:]=self.BCs['bc_south_rho']
+            if (type(self.BCs['bc_south_p']) is str)\
+                and (self.BCs['bc_south_p']=='zero_grad'):
+                p[0,:]  =p[1,:]  
+            else:
+                p[0,:]  =self.BCs['bc_south_p']
+            if (type(self.BCs['bc_south_u']) is str)\
+                and (self.BCs['bc_south_u']=='zero_grad'):
+                u[0,:]  =u[1,:]  
+            else:
+                u[0,:]  =self.BCs['bc_south_u']
+            if (type(self.BCs['bc_south_v']) is str)\
+                and (self.BCs['bc_south_v']=='zero_grad'):
+                v[0,:]  =v[1,:]  
+            else:
+                v[0,:]  =self.BCs['bc_south_v']
+            if (type(self.BCs['bc_south_T']) is str)\
+                and (self.BCs['bc_south_T']=='zero_grad'):
+                T[0,:]  =T[1,:]  
+            else:
+                T[0,:]  =self.BCs['bc_south_T']
+
             rhou[0,:]=rho[0,:]*u[0,:]
             rhov[0,:]=rho[0,:]*v[0,:]
             rhoE[0,:]=rho[0,:]*\
                 (0.5*(u[0,:]**2+v[0,:]**2)+\
-                 self.Domain.Cv*T[0,:])
-        
-        if self.BCs['bc_type_north']!='periodic':
+                 self.Domain.Cv*T[0,:])                
+            
+        # North face
+        if self.BCs['bc_type_north']=='wall':
+#            print 'North: wall'
+            p[-1,:]  =p[-2,:]
+            rhou[-1,:]  =0
+            rhov[-1,:]  =0
+            if (type(self.BCs['bc_north_T']) is str)\
+                and (self.BCs['bc_north_T']=='zero_grad'):
+                T[-1,:]  =T[-2,:]
+            else:
+                T[-1,:]  =self.BCs['bc_north_T']
+            rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
+            rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
+            
+        elif self.BCs['bc_type_north']!='periodic':
+#            print 'North: non-periodic'
+            if (type(self.BCs['bc_north_rho']) is str)\
+                and (self.BCs['bc_north_rho']=='zero_grad'):
+                rho[-1,:]=rho[-2,:]
+            else:
+                rho[-1,:]=self.BCs['bc_north_rho']
+            if (type(self.BCs['bc_north_p']) is str)\
+                and (self.BCs['bc_north_p']=='zero_grad'):
+                p[-1,:]  =p[-2,:]  
+            else:
+                p[-1,:]  =self.BCs['bc_north_p']
+            if (type(self.BCs['bc_north_u']) is str)\
+                and (self.BCs['bc_north_u']=='zero_grad'):
+                u[-1,:]  =u[-2,:]  
+            else:
+                u[-1,:]  =self.BCs['bc_north_u']
+            if (type(self.BCs['bc_north_v']) is str)\
+                and (self.BCs['bc_north_v']=='zero_grad'):
+                v[-1,:]  =v[-2,:]  
+            else:
+                v[-1,:]  =self.BCs['bc_north_v']
+            if (type(self.BCs['bc_north_T']) is str)\
+                and (self.BCs['bc_north_T']=='zero_grad'):
+                T[-1,:]  =T[-2,:]  
+            else:
+                T[-1,:]  =self.BCs['bc_north_T']
+                
             rhou[-1,:]=rho[-1,:]*u[-1,:]
             rhov[-1,:]=rho[-1,:]*v[-1,:]
             rhoE[-1,:]=rho[-1,:]*\
                 (0.5*(u[-1,:]**2+v[-1,:]**2)+\
                  self.Domain.Cv*T[-1,:])
+        
+        # Conservative values at boundaries
+#        if self.BCs['bc_type_left']!='periodic':
+#            rhou[:,0]=rho[:,0]*u[:,0]
+#            rhov[:,0]=rho[:,0]*v[:,0]
+#            rhoE[:,0]=rho[:,0]*\
+#                (0.5*(u[:,0]**2+v[:,0]**2)+\
+#                 self.Domain.Cv*T[:,0])
+#        
+#        if self.BCs['bc_type_right']!='periodic':
+#            rhou[:,-1]=rho[:,-1]*u[:,-1]
+#            rhov[:,-1]=rho[:,-1]*v[:,-1]
+#            rhoE[:,-1]=rho[:,-1]*\
+#                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
+#                 self.Domain.Cv*T[:,-1])
+#        
+#        if self.BCs['bc_type_south']!='periodic':
+#            rhou[0,:]=rho[0,:]*u[0,:]
+#            rhov[0,:]=rho[0,:]*v[0,:]
+#            rhoE[0,:]=rho[0,:]*\
+#                (0.5*(u[0,:]**2+v[0,:]**2)+\
+#                 self.Domain.Cv*T[0,:])
+#        
+#        if self.BCs['bc_type_north']!='periodic':
+#            rhou[-1,:]=rho[-1,:]*u[-1,:]
+#            rhov[-1,:]=rho[-1,:]*v[-1,:]
+#            rhoE[-1,:]=rho[-1,:]*\
+#                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
+#                 self.Domain.Cv*T[-1,:])
         
    
     # Main compressible solver (1 time step)
@@ -382,14 +444,16 @@ class TwoDimPlanarSolve():
         rhou_c=rhou_0.copy()
         rhov_c=rhov_0.copy()
         rhoE_c=rhoE_0.copy()
+#        u=numpy.empty_like(rho_0)
+#        v=numpy.empty_like(rho_0)
+#        p=numpy.empty_like(rho_0)
+#        T=numpy.empty_like(rho_0)
         drhodt=numpy.zeros_like(rho_c)
         drhoudt=numpy.zeros_like(rhou_c)
         drhovdt=numpy.zeros_like(rhov_c)
         drhoEdt=numpy.zeros_like(rhoE_c)
-        
-        dt=self.getdt()
-        
-        if self.time_scheme=='Explicit':
+                
+        if self.time_scheme=='Euler':
             rk_coeff = numpy.array([1,0])
             rk_substep_fraction = numpy.array([1,0])
             Nstep = 1
@@ -402,7 +466,7 @@ class TwoDimPlanarSolve():
             RK_info=temporal_schemes.runge_kutta(self.time_scheme)
             Nstep = RK_info.Nk
             if Nstep<0:
-                return 1 # Scheme not recognized; abort solve
+                return 1 # Scheme not recognized; abort solver
             rk_coeff = RK_info.rk_coeff
             rk_substep_fraction = RK_info.rk_substep_fraction
 
@@ -411,13 +475,19 @@ class TwoDimPlanarSolve():
             drhovdt=[0]*Nstep
             drhoEdt=[0]*Nstep
             
+        u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
+        dt=self.getdt(T)
+        if (numpy.isnan(dt)) or (dt<=0):
+            print '*********Diverging time step***********'
+            return 1
+        print 'Time step: %f'%dt
         
         for step in range(Nstep):
             ###################################################################
             # Compute primitive variables
             ###################################################################
             u,v,p,T=self.Domain.primitiveFromConserv(rho_c, rhou_c, rhov_c, rhoE_c)
-    
+            
             ###################################################################
             # Compute time deriviatives of conservatives (2nd order central schemes)
             ###################################################################
@@ -427,17 +497,19 @@ class TwoDimPlanarSolve():
             # Density
             drhodt[step] =-self.compute_Flux(rho_c, u, v, self.dx, self.dy)
     
-            # x-momentum (flux, pressure, shear stress)
+            # x-momentum (flux, pressure, shear stress, gravity)
             drhoudt[step] =-self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
             drhoudt[step]-=self.compute_Flux(1.0, p, numpy.zeros_like(v), self.dx, self.dy)
     #        drhoudt[1:-1,1:-1]-=(self.Domain.p[1:-1,2:]-self.Domain.p[1:-1,:-2])/(2*self.dx[1:-1,1:-1])
             drhoudt[step]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
+            drhoudt[step]+=rhov_c*self.gx
     
-            # y-momentum (flux, pressure, shear stress)
+            # y-momentum (flux, pressure, shear stress, gravity)
             drhovdt[step] =-self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
             drhovdt[step]-=self.compute_Flux(1.0, numpy.zeros_like(u), p, self.dx, self.dy)
     #        drhovdt[1:-1,1:-1]-=(self.Domain.p[2:,1:-1]-self.Domain.p[:-2,1:-1])/(2*self.dy[1:-1,1:-1])
             drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
+            drhovdt[step]+=rhov_c*self.gy
             
             # Energy (flux, pressure-work, shear-work, conduction)
             drhoEdt[step] =-self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
@@ -459,10 +531,10 @@ class TwoDimPlanarSolve():
                     rhov_c+= dt*rk_coeff[step+1][rk_index]*drhovdt[rk_index]
                     rhoE_c+= dt*rk_coeff[step+1][rk_index]*drhoEdt[rk_index]
             
-            ###################################################################
-            # Apply boundary conditions
-            ###################################################################
-            self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T)
+                    ###################################################################
+                    # Apply boundary conditions
+                    ###################################################################
+                    self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T)
             
             ###################################################################
             # END OF TIME STEP CALCULATIONS
@@ -482,6 +554,17 @@ class TwoDimPlanarSolve():
         ###################################################################
         self.Apply_BCs(self.Domain.rho, self.Domain.rhou, self.Domain.rhov,\
                        self.Domain.rhoE, u, v, p, T)
+        
+        ###################################################################
+        # Divergence check
+        ###################################################################
+        
+        if (numpy.isnan(numpy.amax(self.Domain.rho))) or \
+            (numpy.isnan(numpy.amax(self.Domain.rhou))) or \
+            (numpy.isnan(numpy.amax(self.Domain.rhov))) or \
+            (numpy.isnan(numpy.amax(self.Domain.rhoE))):
+            print '**************Divergence detected****************'
+            return 1
         
         ###################################################################
         # Output data to file?????

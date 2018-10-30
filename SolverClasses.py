@@ -88,7 +88,9 @@ class TwoDimPlanarSolve():
     # Time step check with dx, dy, T and CFL number
     def getdt(self, T):
         dx=numpy.sqrt(self.dx**2+self.dy**2)
+#        print(dx)
         c=numpy.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
+#        print(c)
         return numpy.amin(self.CFL*dx/(c))
 
     # Convergence checker (REMOVE? NO IMPLICIT CALCULATIONS DONE)
@@ -110,8 +112,8 @@ class TwoDimPlanarSolve():
     # Calculates for entire domain assuming periodicity in both dimensions
     # (BCs other than Periodicity is applied after calculating new values)
     def compute_Flux(self, rho, u, v, dx, dy):
-        dx*=2 # Central difference schemes
-        dy*=2
+#        dx*=2 # Central difference schemes
+#        dy*=2
         ddx=numpy.empty_like(u)
         ddy=numpy.empty_like(v)
         rhou=rho*u
@@ -119,35 +121,35 @@ class TwoDimPlanarSolve():
 #        ddx=(rhou[1:-1,2:]-rhou[1:-1,:-2])/dx[1:-1,1:-1]
 #        ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
 
-        ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/dx[:,1:-1]
-        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/dy[1:-1,:]
+        ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
+        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/(dy[1:-1,:]+dx[:-2,:])
         
-        ddx[:,0] =(rhou[:,1]-rhou[:,-1])/dx[:,0]
-        ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/dx[:,-1]
+        ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
+        ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
         
-        ddy[0,:] =(rhov[1,:]-rhov[-1,:])/dy[0,:]
-        ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/dy[-1,:]
+        ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
+        ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
         
-        dx/=2.0 # Reset original discretizations
-        dy/=2.0
+#        dx/=2.0 # Reset original discretizations
+#        dy/=2.0
         
         return ddx+ddy
     
     # Shear stress gradient calculation for momentum
     def Calculate_Stress(self, u, v, dx, dy):
-        dx*=2 # Central difference schemes
-        dy*=2
+#        dx*=2 # Central difference schemes
+#        dy*=2
         mu=self.Domain.mu
         # Central differences up to boundaries
-        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/dx[1:-1,1:-1]-\
-            (v[2:,1:-1]-v[:-2,1:-1])/dy[1:-1,1:-1])
-        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/dx[1:-1,1:-1]+\
-            (u[2:,1:-1]-u[:-2,1:-1])/dy[1:-1,1:-1])
-        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/dy[1:-1,1:-1]-\
-            (u[1:-1,2:]-u[1:-1,:-2])/dx[1:-1,1:-1])
+        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
+            (v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
+        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+            (u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
+        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
+            (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
         # Forward/backward differences for boundary values (corners not calculated)
-        dx/=2.0
-        dy/=2.0
+#        dx/=2.0
+#        dy/=2.0
         self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,1:-1])/dx[0,1:-1]-\
             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
         self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,1:-1])/dx[-1,1:-1]-\
@@ -189,17 +191,17 @@ class TwoDimPlanarSolve():
     
     # Heat conduction gradient source term
     def Source_Cond(self, T, dx, dy):
-        dx*=2
-        dy*=2
+#        dx*=2
+#        dy*=2
         qx=numpy.empty_like(T)
         qy=numpy.empty_like(T)
         k=self.Domain.k
         # Central difference
-        qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/dx[:,1:-1]
-        qy[1:-1,:]=-k*(T[2:,:]-T[:-2,:])/dy[1:-1,:]
+        qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
+        qy[1:-1,:]=-k*(T[2:,:]-T[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
         # Forward/backward difference for boundaries
-        dx/=2
-        dy/=2
+#        dx/=2
+#        dy/=2
         qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
         qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
         
@@ -404,36 +406,6 @@ class TwoDimPlanarSolve():
                 (0.5*(u[-1,:]**2+v[-1,:]**2)+\
                  self.Domain.Cv*T[-1,:])
         
-        # Conservative values at boundaries
-#        if self.BCs['bc_type_left']!='periodic':
-#            rhou[:,0]=rho[:,0]*u[:,0]
-#            rhov[:,0]=rho[:,0]*v[:,0]
-#            rhoE[:,0]=rho[:,0]*\
-#                (0.5*(u[:,0]**2+v[:,0]**2)+\
-#                 self.Domain.Cv*T[:,0])
-#        
-#        if self.BCs['bc_type_right']!='periodic':
-#            rhou[:,-1]=rho[:,-1]*u[:,-1]
-#            rhov[:,-1]=rho[:,-1]*v[:,-1]
-#            rhoE[:,-1]=rho[:,-1]*\
-#                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
-#                 self.Domain.Cv*T[:,-1])
-#        
-#        if self.BCs['bc_type_south']!='periodic':
-#            rhou[0,:]=rho[0,:]*u[0,:]
-#            rhov[0,:]=rho[0,:]*v[0,:]
-#            rhoE[0,:]=rho[0,:]*\
-#                (0.5*(u[0,:]**2+v[0,:]**2)+\
-#                 self.Domain.Cv*T[0,:])
-#        
-#        if self.BCs['bc_type_north']!='periodic':
-#            rhou[-1,:]=rho[-1,:]*u[-1,:]
-#            rhov[-1,:]=rho[-1,:]*v[-1,:]
-#            rhoE[-1,:]=rho[-1,:]*\
-#                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
-#                 self.Domain.Cv*T[-1,:])
-        
-   
     # Main compressible solver (1 time step)
     def Advance_Soln(self):
         rho_0=self.Domain.rho.copy()
@@ -444,14 +416,6 @@ class TwoDimPlanarSolve():
         rhou_c=rhou_0.copy()
         rhov_c=rhov_0.copy()
         rhoE_c=rhoE_0.copy()
-#        u=numpy.empty_like(rho_0)
-#        v=numpy.empty_like(rho_0)
-#        p=numpy.empty_like(rho_0)
-#        T=numpy.empty_like(rho_0)
-        drhodt=numpy.zeros_like(rho_c)
-        drhoudt=numpy.zeros_like(rhou_c)
-        drhovdt=numpy.zeros_like(rhov_c)
-        drhoEdt=numpy.zeros_like(rhoE_c)
                 
         if self.time_scheme=='Euler':
             rk_coeff = numpy.array([1,0])
@@ -480,7 +444,7 @@ class TwoDimPlanarSolve():
         if (numpy.isnan(dt)) or (dt<=0):
             print '*********Diverging time step***********'
             return 1
-        print 'Time step: %f'%dt
+        print 'Time step size: %f'%dt
         
         for step in range(Nstep):
             ###################################################################
@@ -502,14 +466,14 @@ class TwoDimPlanarSolve():
             drhoudt[step]-=self.compute_Flux(1.0, p, numpy.zeros_like(v), self.dx, self.dy)
     #        drhoudt[1:-1,1:-1]-=(self.Domain.p[1:-1,2:]-self.Domain.p[1:-1,:-2])/(2*self.dx[1:-1,1:-1])
             drhoudt[step]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
-            drhoudt[step]+=rhov_c*self.gx
+            drhoudt[step]+=rho_c*self.gx
     
             # y-momentum (flux, pressure, shear stress, gravity)
             drhovdt[step] =-self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
             drhovdt[step]-=self.compute_Flux(1.0, numpy.zeros_like(u), p, self.dx, self.dy)
     #        drhovdt[1:-1,1:-1]-=(self.Domain.p[2:,1:-1]-self.Domain.p[:-2,1:-1])/(2*self.dy[1:-1,1:-1])
             drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
-            drhovdt[step]+=rhov_c*self.gy
+            drhovdt[step]+=rho_c*self.gy
             
             # Energy (flux, pressure-work, shear-work, conduction)
             drhoEdt[step] =-self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
@@ -531,10 +495,10 @@ class TwoDimPlanarSolve():
                     rhov_c+= dt*rk_coeff[step+1][rk_index]*drhovdt[rk_index]
                     rhoE_c+= dt*rk_coeff[step+1][rk_index]*drhoEdt[rk_index]
             
-                    ###################################################################
-                    # Apply boundary conditions
-                    ###################################################################
-                    self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T)
+                ###################################################################
+                # Apply boundary conditions
+                ###################################################################
+                self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T)
             
             ###################################################################
             # END OF TIME STEP CALCULATIONS
@@ -573,546 +537,3 @@ class TwoDimPlanarSolve():
         
         
         return 0
-        
-##### FORMER EXPLICIT-TRANS CONDUCTION SOLVER INCLUDING BC CALCULATION #################
-    def SolveExpTrans(self):
-        Tc=numpy.empty_like(self.T)
-        BC=self.BCs # Copy global variables into local ones for easy calling
-        dx=self.dx
-        dy=self.dy
-        Fo=self.Fo
-        k=self.Domain.mat_prop['k']
-        BC1x,BC1y='T','T'# BC types at corner 1
-        BC2x,BC2y='T','T'# BC types at corner 2
-        BC3x,BC3y='T','T'# BC types at corner 3
-        BC4x,BC4y='T','T'# BC types at corner 4
-        # Assign temperature BCs if applicable
-        for i in range(len(BC['BCx1'])/3):
-            if BC['BCx1'][3*i]=='T':
-                st=BC['BCx1'][2+3*i][0]
-                en=BC['BCx1'][2+3*i][1]
-                self.T[st:en,0]=BC['BCx1'][1+3*i]
-                if len(BC['BCx1'])/3-i==1:
-                    self.T[-1,0]=BC['BCx1'][-2]
-        for i in range(len(BC['BCx2'])/3):
-            if BC['BCx2'][3*i]=='T':
-                st=BC['BCx2'][2+3*i][0]
-                en=BC['BCx2'][2+3*i][1]
-                self.T[st:en,-1]=BC['BCx2'][1+3*i]
-                if len(BC['BCx2'])/3-i==1:
-                    self.T[-1,-1]=BC['BCx2'][-2]
-        for i in range(len(BC['BCy1'])/3):
-            if BC['BCy1'][3*i]=='T':
-                st=BC['BCy1'][2+3*i][0]
-                en=BC['BCy1'][2+3*i][1]
-                self.T[0,st:en]=BC['BCy1'][1+3*i]
-                if len(BC['BCy1'])/3-i==1:
-                    self.T[0,-1]=BC['BCy1'][-2]
-        for i in range(len(BC['BCy2'])/3):
-            if BC['BCy2'][3*i]=='T':
-                st=BC['BCy2'][2+3*i][0]
-                en=BC['BCy2'][2+3*i][1]
-                self.T[-1,st:en]=BC['BCy2'][1+3*i]
-                if len(BC['BCy2'])/3-i==1:
-                    self.T[-1,-1]=BC['BCy2'][-2]
-        
-        # Solve temperatures for each time step
-        for j in range(self.Nt):
-            if (j+1)%100==0:
-                print 'Time step %i'%(j+1)
-            Tc=self.T.copy()
-            self.T[1:-1,1:-1]=2*Fo/(dx[1:,1:]+dx[:-1,:-1])*(Tc[1:-1,:-2]/dx[:-1,:-1]+Tc[1:-1,2:]/dx[1:,1:])\
-            +2*Fo/(dy[1:,1:]+dy[:-1,:-1])*(Tc[2:,1:-1]/dy[1:,1:]+Tc[:-2,1:-1]/dy[:-1,:-1])\
-            +(1-4*Fo/(dx[1:,1:]+dx[:-1,:-1])/(dy[1:,1:]+dy[:-1,:-1])\
-              *((dy[1:,1:]+dy[:-1,:-1])/2/dx[:-1,:-1]+(dy[1:,1:]+dy[:-1,:-1])/2/dx[1:,1:]\
-                +(dx[1:,1:]+dx[:-1,:-1])/2/dy[1:,1:]+(dx[1:,1:]+dx[:-1,:-1])/2/dy[:-1,:-1]))*Tc[1:-1,1:-1]
-            
-            # Apply flux/conv BC at smallest x
-            for i in range(len(BC['BCx1'])/3):
-                if BC['BCx1'][3*i]=='F' or BC['BCx1'][3*i]=='C':
-                    st=BC['BCx1'][2+3*i][0]
-                    en=BC['BCx1'][2+3*i][1]
-                    if BC['BCx1'][3*i]=='F':
-                        q=BC['BCx1'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC1x='F'
-                    else:
-                        q=BC['BCx1'][1+3*i][0]*BC['BCx1'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCx1'][1+3*i][0]/k
-                        print('Convective BC %i'%q)
-                        if i==0:
-                            BC1x='C'
-                    
-                    self.T[st:en,0]=2*Fo*q/k/dx[st:en+1,0]+2*Fo/dx[st:en+1,0]**2*Tc[st:en,1]\
-                        +2*Fo/(dy[st:en+1,0]+dy[st-1:en,0])\
-                        *(Tc[st-1:en-1,0]/dy[st-1:en,0]+Tc[st+1:en+1,0]/dy[st:en+1,0])\
-                        +(1-2*Fo/dx[st:en+1,0]**2-2*Fo/(dy[st:en+1,0]+dy[st-1:en,0])\
-                        *(1/dy[st-1:en,0]+1/dy[st:en+1,0])-2*Fo*Bi/dx[st:en+1,0])*Tc[st:en,0]
-                    if len(BC['BCx1'])/3-i==1:
-                        self.T[-2,0]=2*Fo*q/k/dx[-1,0]+2*Fo/dx[-1,0]**2*Tc[-2,1]\
-                            +2*Fo/(dy[-1,0]+dy[-2,0])\
-                            *(Tc[-3,0]/dy[-2,0]+Tc[-1,0]/dy[-1,0])\
-                            +(1-2*Fo/dx[-1,0]**2-2*Fo/(dy[-1,0]+dy[-2,0])\
-                            *(1/dy[-2,0]+1/dy[-1,0])-2*Fo*Bi/dx[-1,0])*Tc[-2,0]
-                        if Bi==0:
-                            BC4x='F'
-                        else:
-                            BC4x='C'
-            
-            # Apply flux/conv BC at largest x
-            for i in range(len(BC['BCx2'])/3):
-                if BC['BCx2'][3*i]=='F' or BC['BCx2'][3*i]=='C':
-                    st=BC['BCx2'][2+3*i][0]
-                    en=BC['BCx2'][2+3*i][1]
-                    if BC['BCx2'][3*i]=='F':
-                        q=BC['BCx2'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC2x='F'
-                    else:
-                        q=BC['BCx2'][1+3*i][0]*BC['BCx2'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCx2'][1+3*i][0]/k
-                        if i==0:
-                            BC2x='C'
-                    self.T[st:en,-1]=2*Fo*q/k/dx[st:en+1,-1]+2*Fo/dx[st:en+1,-1]**2*Tc[st:en,-2]\
-                        +2*Fo/(dy[st:en+1,-1]+dy[st-1:en,-1])\
-                        *(Tc[st-1:en-1,-1]/dy[st-1:en,-1]+Tc[st+1:en+1,-1]/dy[st:en+1,-1])\
-                        +(1-2*Fo/dx[st:en+1,-1]**2-2*Fo/(dy[st:en+1,-1]+dy[st-1:en,-1])\
-                        *(1/dy[st-1:en,-1]+1/dy[st:en+1,-1])-2*Fo*Bi/dx[st:en+1,-1])*Tc[st:en,-1]
-
-                    if len(BC['BCx2'])/3-i==1:
-                        self.T[-2,-1]=2*Fo*q/k/dx[-1,-1]+2*Fo/dx[-1,-1]**2*Tc[-2,-2]\
-                            +2*Fo/(dy[-1,-1]+dy[-2,-1])\
-                            *(Tc[-3,-1]/dy[-2,-1]+Tc[-1,-1]/dy[-1,-1])\
-                            +(1-2*Fo/dx[-1,0]**2-2*Fo/(dy[-1,0]+dy[-2,-1])\
-                            *(1/dy[-2,-1]+1/dy[-1,-1])-2*Fo*Bi/dx[-1,-1])*Tc[-2,-1]
-                        if Bi==0:
-                            BC3x='F'
-                        else:
-                            BC3x='C'
-                        
-            # Apply flux/conv BC at smallest y
-            for i in range(len(BC['BCy1'])/3):
-                if BC['BCy1'][3*i]=='F' or BC['BCy1'][3*i]=='C':
-                    st=BC['BCy1'][2+3*i][0]
-                    en=BC['BCy1'][2+3*i][1]
-                    if BC['BCy1'][3*i]=='F':
-                        q=BC['BCy1'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC1y='F'
-                    else:
-                        q=BC['BCy1'][1+3*i][0]*BC['BCy1'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCy1'][1+3*i][0]/k
-                        if i==0:
-                            BC1y='C'
-                    self.T[0,st:en]=2*Fo*q/k/dy[0,st:en+1]+2*Fo/dy[0,st:en+1]**2*Tc[1,st:en]\
-                        +2*Fo/(dx[0,st:en+1]+dx[0,st-1:en])\
-                        *(Tc[0,st-1:en-1]/dx[0,st-1:en]+Tc[0,st+1:en+1]/dx[0,st:en+1])\
-                        +(1-2*Fo/dy[0,st:en+1]**2-2*Fo/(dx[0,st:en+1]+dx[0,st-1:en])\
-                        *(1/dx[0,st-1:en]+1/dx[0,st:en+1])-2*Fo*Bi/dy[0,st:en+1])*Tc[0,st:en]
-
-                    if len(BC['BCy1'])/3-i==1:
-                        self.T[0,-2]=2*Fo*q/k/dy[0,-1]+2*Fo/dy[0,-1]**2*Tc[1,-2]\
-                            +2*Fo/(dx[0,-1]+dx[0,-2])\
-                            *(Tc[0,-3]/dx[0,-2]+Tc[0,-1]/dx[0,-1])\
-                            +(1-2*Fo/dy[0,-1]**2-2*Fo/(dx[0,-1]+dx[0,-2])\
-                            *(1/dx[0,-2]+1/dx[0,-1])-2*Fo*Bi/dy[0,-1])*Tc[0,-2]
-                        if Bi==0:
-                            BC2y='F'
-                        else:
-                            BC2y='C'
-            ## Apply flux/conv BC at largest y (CHANGED dx and dy array ops)
-            for i in range(len(BC['BCy2'])/3):
-                if BC['BCy2'][3*i]=='F' or BC['BCy2'][3*i]=='C':
-                    st=BC['BCy2'][2+3*i][0]
-                    en=BC['BCy2'][2+3*i][1]
-                    if BC['BCy2'][3*i]=='F':
-                        q=BC['BCy2'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC4y='F'
-                    else:
-                        q=BC['BCy2'][1+3*i][0]*BC['BCy2'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCy2'][1+3*i][0]/k
-                        if i==0:
-                            BC4y='C'
-                    self.T[-1,st:en]=2*Fo*q/k/dy[-1,st:en+1]+2*Fo/dy[-1,st:en+1]**2*Tc[-2,st:en]\
-                        +2*Fo/(dx[-1,st:en+1]+dx[-1,st-1:en])\
-                        *(Tc[-1,st-1:en-1]/dx[-1,st-1:en]+Tc[-1,st+1:en+1]/dx[-1,st:en+1])\
-                        +(1-2*Fo/dy[-1,st:en+1]**2-2*Fo/(dx[-1,st:en+1]+dx[-1,st-1:en])\
-                        *(1/dx[-1,st-1:en]+1/dx[-1,st:en+1])-2*Fo*Bi/dy[-1,st:en+1])*Tc[-1,st:en]
-
-                    if len(BC['BCy2'])/3-i==1:
-                        self.T[-1,-2]=2*Fo*q/k/dy[-1,-1]+2*Fo/dy[-1,-1]**2*Tc[-2,-2]\
-                            +2*Fo/(dx[-1,-1]+dx[-1,-2])\
-                            *(Tc[-1,-3]/dx[-1,-2]+Tc[-1,-1]/dx[-1,-1])\
-                            +(1-2*Fo/dy[-1,-1]**2-2*Fo/(dx[-1,-1]+dx[-1,-2])\
-                            *(1/dx[-1,-2]+1/dx[-1,-1])-2*Fo*Bi/dy[-1,-1])*Tc[-1,-2]
-                        if Bi==0:
-                            BC3y='F'
-                        else:
-                            BC3y='C'
-
-            # Corner treatments
-            if (BC1x!='T' and BC1y!='T'):
-                if BC1x=='F':
-                    qx=BC['BCx1'][1] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx1'][1][0]*BC['BCx1'][1][1] # h*Tinf for conv
-                    Bix=BC['BCx1'][1][0]/k
-                if BC1y=='F':
-                    qy=BC['BCy1'][1] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy1'][1][0]*BC['BCy1'][1][1] # h*Tinf for conv
-                    Biy=BC['BCy1'][1][0]/k
-                
-                self.T[0,0]=2*Fo*qx/k/dx[0,0]+2*Fo*qy/k/dy[0,0]\
-                    +2*Fo/dx[0,0]**2*Tc[0,1]+2*Fo/dy[0,0]**2*Tc[1,0]\
-                    +(1-2*Fo*(1/dx[0,0]**2+1/dy[0,0]**2)\
-                      -2*Fo*(Bix/dx[0,0]+Biy/dy[0,0]))*Tc[0,0]
-
-            if (BC2x!='T' and BC2y!='T'):
-                if BC2x=='F':
-                    qx=BC['BCx2'][1] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx2'][1][0]*BC['BCx2'][1][1] # h*Tinf for conv
-                    Bix=BC['BCx2'][1][0]/k
-                if BC2y=='F':
-                    qy=BC['BCy1'][-2] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy1'][-2][0]*BC['BCy1'][-2][1] # h*Tinf for conv
-                    Biy=BC['BCy1'][-2][0]/k
-                
-                self.T[0,-1]=2*Fo*qx/k/dx[0,-1]+2*Fo*qy/k/dy[0,-1]\
-                    +2*Fo/dx[0,-1]**2*Tc[0,-2]+2*Fo/dy[0,-1]**2*Tc[1,-1]\
-                    +(1-2*Fo*(1/dx[0,-1]**2+1/dy[0,-1]**2)\
-                      -2*Fo*(Bix/dx[0,-1]+Biy/dy[0,-1]))*Tc[0,-1]                
-            
-            if (BC3x!='T' and BC3y!='T'):
-                if BC3x=='F':
-                    qx=BC['BCx2'][-2] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx2'][-2][0]*BC['BCx2'][-2][1] # h*Tinf for conv
-                    Bix=BC['BCx2'][-2][0]/k
-                if BC3y=='F':
-                    qy=BC['BCy2'][-2] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy2'][-2][0]*BC['BCy2'][-2][1] # h*Tinf for conv
-                    Biy=BC['BCy2'][-2][0]/k
-                
-                self.T[-1,-1]=2*Fo*qx/k/dx[-1,-1]+2*Fo*qy/k/dy[-1,-1]\
-                    +2*Fo/dx[-1,-1]**2*Tc[-1,-2]+2*Fo/dy[-1,-1]**2*Tc[-2,-1]\
-                    +(1-2*Fo*(1/dx[-1,-1]**2+1/dy[-1,-1]**2)\
-                      -2*Fo*(Bix/dx[-1,-1]+Biy/dy[-1,-1]))*Tc[-1,-1]                 
-            
-            if (BC4x!='T' and BC4y!='T'):
-                if BC4x=='F':
-                    qx=BC['BCx1'][-2] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx1'][-2][0]*BC['BCx1'][-2][1] # h*Tinf for conv
-                    Bix=BC['BCx1'][-2][0]/k
-                if BC4y=='F':
-                    qy=BC['BCy2'][1] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy2'][1][0]*BC['BCy2'][1][1] # h*Tinf for conv
-                    Biy=BC['BCy2'][1][0]/k
-                
-                self.T[-1,0]=2*Fo*qx/k/dx[-1,0]+2*Fo*qy/k/dy[-1,0]\
-                    +2*Fo/dx[-1,0]**2*Tc[-1,1]+2*Fo/dy[-1,0]**2*Tc[-2,0]\
-                    +(1-2*Fo*(1/dx[-1,0]**2+1/dy[-1,0]**2)\
-                      -2*Fo*(Bix/dx[-1,0]+Biy/dy[-1,0]))*Tc[-1,0]                 
-
-######### FORMER CONDUCTION STEADY STATE SOLVER INCLUDING BC CALCULATOR #######
-    def SolveSS(self):
-        Tc=numpy.empty_like(self.T)
-        count=0
-        BC=self.BCs # Copy global variables into local ones for easy calling
-        dx=self.dx
-        dy=self.dy
-        k=self.Domain.mat_prop['k']
-        BC1x,BC1y='T','T'# BC types at corner 1
-        BC2x,BC2y='T','T'# BC types at corner 2
-        BC3x,BC3y='T','T'# BC types at corner 3
-        BC4x,BC4y='T','T'# BC types at corner 4
-        
-        # Assign temperature BCs if applicable
-        for i in range(len(BC['BCx1'])/3):
-            if BC['BCx1'][3*i]=='T':
-                st=BC['BCx1'][2+3*i][0]
-                en=BC['BCx1'][2+3*i][1]
-                self.T[st:en,0]=BC['BCx1'][1+3*i]
-                if len(BC['BCx1'])/3-i==1:
-                    self.T[-1,0]=BC['BCx1'][-2]
-        for i in range(len(BC['BCx2'])/3):
-            if BC['BCx2'][3*i]=='T':
-                st=BC['BCx2'][2+3*i][0]
-                en=BC['BCx2'][2+3*i][1]
-                self.T[st:en,-1]=BC['BCx2'][1+3*i]
-                if len(BC['BCx2'])/3-i==1:
-                    self.T[-1,-1]=BC['BCx2'][-2]
-        for i in range(len(BC['BCy1'])/3):
-            if BC['BCy1'][3*i]=='T':
-                st=BC['BCy1'][2+3*i][0]
-                en=BC['BCy1'][2+3*i][1]
-                self.T[0,st:en]=BC['BCy1'][1+3*i]
-                if len(BC['BCy1'])/3-i==1:
-                    self.T[0,-1]=BC['BCy1'][-2]
-        for i in range(len(BC['BCy2'])/3):
-            if BC['BCy2'][3*i]=='T':
-                st=BC['BCy2'][2+3*i][0]
-                en=BC['BCy2'][2+3*i][1]
-                self.T[-1,st:en]=BC['BCy2'][1+3*i]
-                if len(BC['BCy2'])/3-i==1:
-                    self.T[-1,-1]=BC['BCy2'][-2]
-
-        print 'Residuals:'
-        while count<self.maxCount:
-            Tc=self.T.copy()
-            self.T[1:-1,1:-1]=(Tc[:-2,1:-1]/self.dy[:-1,:-1]+Tc[2:,1:-1]/self.dy[1:,1:]\
-            +Tc[1:-1,:-2]/self.dx[:-1,:-1]+Tc[1:-1,2:]/self.dx[1:,1:])\
-            /(1/self.dx[1:,1:]+1/self.dx[:-1,:-1]+1/self.dy[1:,:-1]+1/self.dy[:-1,:-1])
-            
-            # Apply flux/conv BC at smallest x
-            for i in range(len(BC['BCx1'])/3):
-                if BC['BCx1'][3*i]=='F' or BC['BCx1'][3*i]=='C':
-                    st=BC['BCx1'][2+3*i][0]
-                    en=BC['BCx1'][2+3*i][1]
-                    if BC['BCx1'][3*i]=='F':
-                        q=BC['BCx1'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC1x='F'
-                    else:
-                        q=BC['BCx1'][1+3*i][0]*BC['BCx1'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCx1'][1+3*i][0]/k
-                        if i==0:
-                            BC1x='C'
-#                    self.T[st:en,0]=(2*q*dy[1,1]**2*dx[1,1]/k+2*dy[1,1]**2*self.T[st:en,1]\
-#                         +dx[1,1]**2*(self.T[st-1:en-1,0]+self.T[st+1:en+1,0]))\
-#                         /(2*dy[1,1]**2+2*dx[1,1]**2) ################# equal spacings
-                    
-                    self.T[st:en,0]=((dy[st:en+1,0]+dy[st-1:en,0])*(q/k+self.T[st:en,1]/dx[st-1:en,0])\
-                             +dx[st-1:en,0]*(self.T[st-1:en-1,0]/dy[st-1:en,0]\
-                                +self.T[st+1:en+1,0]/dy[st:en+1,0]))\
-                             /((dy[st:en+1,0]+dy[st-1:en,0])*(1/dx[st-1:en,0]+Bi)\
-                               +dx[st-1:en,0]*(1/dy[st-1:en,0]+1/dy[st:en+1,0]))
-                    if len(BC['BCx1'])/3-i==1:
-#                        self.T[-2,0]=(2*q*dy[1,1]**2*dx[1,1]/k+2*dy[1,1]**2*self.T[-2,1]\
-#                             +dx[1,1]**2*(self.T[-3,0]+self.T[-1,0]))\
-#                             /(2*dy[1,1]**2+2*dx[1,1]**2)##################### equal spacings
-                        
-                        self.T[-2,0]=((dy[-1,0]+dy[-2,0])*(q/k+self.T[-2,1]/dx[-2,0])\
-                                 +dx[-2,0]*(self.T[-3,0]/dy[-2,0]\
-                                    +self.T[-1,0]/dy[-1,0]))\
-                                 /((dy[-1,0]+dy[-2,0])*(1/dx[-2,0]+Bi)\
-                                   +dx[-2,0]*(1/dy[-2,0]+1/dy[-1,0]))
-                        if Bi==0:
-                            BC4x='F'
-                        else:
-                            BC4x='C'
-            
-            # Apply flux/conv BC at largest x
-            for i in range(len(BC['BCx2'])/3):
-                if BC['BCx2'][3*i]=='F' or BC['BCx2'][3*i]=='C':
-                    st=BC['BCx2'][2+3*i][0]
-                    en=BC['BCx2'][2+3*i][1]
-                    if BC['BCx2'][3*i]=='F':
-                        q=BC['BCx2'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC2x='F'
-                    else:
-                        q=BC['BCx2'][1+3*i][0]*BC['BCx2'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCx2'][1+3*i][0]/k
-                        if i==0:
-                            BC2x='C'
-#                    self.T[st:en,-1]=(2*q*dy[1,1]**2*dx[1,1]/k+2*dy[1,1]**2*self.T[st:en,-2]\
-#                         +dx[1,1]**2*(self.T[st-1:en-1,-1]+self.T[st+1:en+1,-1]))\
-#                         /(2*dy[1,1]**2+2*dx[1,1]**2) ################# equal spacings
-                    
-                    self.T[st:en,-1]=((dy[st:en+1,-1]+dy[st-1:en,-1])*(q/k+self.T[st:en,-2]/dx[st-1:en,-1])\
-                             +dx[st-1:en,0]*(self.T[st-1:en-1,-1]/dy[st-1:en,-1]\
-                                +self.T[st+1:en+1,-1]/dy[st:en+1,-1]))\
-                             /((dy[st:en+1,-1]+dy[st-1:en,-1])*(1/dx[st-1:en,-1]+Bi)\
-                               +dx[st-1:en,-1]*(1/dy[st-1:en,-1]+1/dy[st:en+1,-1]))
-
-                    if len(BC['BCx2'])/3-i==1:
-#                        self.T[-2,-1]=(2*q*dy[1,1]**2*dx[1,1]/k+2*dy[1,1]**2*self.T[-2,-2]\
-#                         +dx[1,1]**2*(self.T[-3,-1]+self.T[-1,-1]))\
-#                         /(2*dy[1,1]**2+2*dx[1,1]**2) ########################### equal spacings
-                        
-                        self.T[-2,-1]=((dy[-1,-1]+dy[-2,-1])*(q/k+self.T[-2,-2]/dx[-2,-1])\
-                                         +dx[-2,0]*(self.T[-3,-1]/dy[-2,-1]\
-                                            +self.T[-1,-1]/dy[-1,-1]))\
-                                         /((dy[-1,-1]+dy[-2,-1])*(1/dx[-2,-1]+Bi)\
-                                           +dx[-2,-1]*(1/dy[-1,-1]+1/dy[-2,-1]))
-                        if Bi==0:
-                            BC3x='F'
-                        else:
-                            BC3x='C'
-                        
-            # Apply flux/conv BC at smallest y
-            for i in range(len(BC['BCy1'])/3):
-                if BC['BCy1'][3*i]=='F' or BC['BCy1'][3*i]=='C':
-                    st=BC['BCy1'][2+3*i][0]
-                    en=BC['BCy1'][2+3*i][1]
-                    if BC['BCy1'][3*i]=='F':
-                        q=BC['BCy1'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC1y='F'
-                    else:
-                        q=BC['BCy1'][1+3*i][0]*BC['BCy1'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCy1'][1+3*i][0]/k
-                        if i==0:
-                            BC1y='C'
-#                    self.T[0,st:en]=(2*q*dx[1,1]**2*dy[1,1]/k+2*dx[1,1]**2*self.T[1,st:en]\
-#                         +dy[1,1]**2*(self.T[0,st-1:en-1]+self.T[0,st+1:en+1]))\
-#                         /(2*dx[1,1]**2+2*dy[1,1]**2)############# equal spacing
-                    
-                    self.T[0,st:en]=((dx[0,st:en+1]+dx[0,st-1:en])*(q/k+self.T[1,st:en]/dy[0,st-1:en])\
-                             +dy[0,st-1:en]*(self.T[0,st-1:en-1]/dx[0,st-1:en]\
-                                +self.T[0,st+1:en+1]/dx[0,st:en+1]))\
-                             /((dx[0,st:en+1]+dx[0,st-1:en])*(1/dy[0,st-1:en]+Bi)\
-                               +dy[0,st-1:en]*(1/dx[0,st-1:en]+1/dx[0,st:en+1]))
-
-                    if len(BC['BCy1'])/3-i==1:
-#                        self.T[0,-2]=(2*q*dx[1,1]**2*dy[1,1]/k+2*dx[1,1]**2*self.T[1,-2]\
-#                         +dy[1,1]**2*(self.T[0,-3]+self.T[0,-1]))\
-#                         /(2*dx[1,1]**2+2*dy[1,1]**2)##################### equal spacing
-                        
-                        self.T[0,-2]=((dx[0,-1]+dx[0,-2])*(q/k+self.T[1,-2]/dy[0,-2])\
-                                 +dy[0,-2]*(self.T[0,-3]/dx[0,-2]\
-                                    +self.T[0,-1]/dx[0,-1]))\
-                                 /((dx[0,-1]+dx[0,-2])*(1/dy[0,-2]+Bi)\
-                                   +dy[0,-2]*(1/dx[0,-2]+1/dx[0,-1]))
-                        if Bi==0:
-                            BC2y='F'
-                        else:
-                            BC2y='C'
-                        
-            # Apply flux/conv BC at largest y
-            for i in range(len(BC['BCy2'])/3):
-                if BC['BCy2'][3*i]=='F' or BC['BCy2'][3*i]=='C':
-                    st=BC['BCy2'][2+3*i][0]
-                    en=BC['BCy2'][2+3*i][1]
-                    if BC['BCy2'][3*i]=='F':
-                        q=BC['BCy2'][1+3*i]
-                        Bi=0
-                        if i==0:
-                            BC4y='F'
-                    else:
-                        q=BC['BCy2'][1+3*i][0]*BC['BCy2'][1+3*i][1] # h*Tinf
-                        Bi=BC['BCy2'][1+3*i][0]/k
-                        if i==0:
-                            BC4y='C'
-#                    self.T[-1,st:en]=(2*q*dx[1,1]**2*dy[1,1]/k+2*dx[1,1]**2*self.T[-2,st:en]\
-#                         +dy[1,1]**2*(self.T[-1,st-1:en-1]+self.T[-1,st+1:en+1]))\
-#                         /(2*dx[1,1]**2+2*dy[1,1]**2)##################### equal spacing
-#                    
-                    self.T[-1,st:en]=((dx[-1,st:en+1]+dx[-1,st-1:en])*(q/k+self.T[-2,st:en]/dy[-1,st-1:en])\
-                             +dy[-1,st-1:en]*(self.T[-1,st-1:en-1]/dx[-1,st-1:en]\
-                                +self.T[-1,st+1:en+1]/dx[-1,st:en+1]))\
-                             /((dx[-1,st:en+1]+dx[-1,st-1:en])*(1/dy[-1,st-1:en]+Bi)\
-                               +dy[-1,st-1:en]*(1/dx[-1,st-1:en]+1/dx[-1,st:en+1]))
-
-                    if len(BC['BCy2'])/3-i==1:
-#                        self.T[-1,-2]=(2*q*dx[1,1]**2*dy[1,1]/k+2*dx[1,1]**2*self.T[-2,-2]\
-#                         +dy[1,1]**2*(self.T[-1,-3]+self.T[-1,-1]))\
-#                         /(2*dx[1,1]**2+2*dy[1,1]**2)###################### equal spacing
-                        
-                        self.T[-1,-2]=((dx[-1,-1]+dx[-1,-2])*(q/k+self.T[-2,-2]/dy[-1,-2])\
-                                 +dy[-1,-2]*(self.T[-1,-3]/dx[-1,-2]\
-                                    +self.T[-1,-1]/dx[-1,-1]))\
-                                 /((dx[-1,-1]+dx[-1,-2])*(1/dy[-1,-2]+Bi)\
-                                   +dy[-1,-2]*(1/dx[-1,-2]+1/dx[-1,-1]))
-                        if Bi==0:
-                            BC3y='F'
-                        else:
-                            BC3y='C'
-                        
-            # Corner treatments
-            if (BC1x!='T' and BC1y!='T'):
-                if BC1x=='F':
-                    qx=BC['BCx1'][1] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx1'][1][0]*BC['BCx1'][1][1] # h*Tinf for conv
-                    Bix=BC['BCx1'][1][0]*dx[0,0]/k
-                if BC1y=='F':
-                    qy=BC['BCy1'][1] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy1'][1][0]*BC['BCy1'][1][1] # h*Tinf for conv
-                    Biy=BC['BCy1'][1][0]*dy[0,0]/k
-                
-                self.T[0,0]=(dx[0,0]**2*dy[0,0]/k*qy+dy[0,0]**2*dx[0,0]/k*qx \
-                    +dy[0,0]**2*self.T[0,1]+dx[0,0]**2*self.T[1,0])\
-                      /(dy[0,0]**2+dx[0,0]**2+dx[0,0]**2*Biy+dy[0,0]**2*Bix)
-
-            if (BC2x!='T' and BC2y!='T'):
-                if BC2x=='F':
-                    qx=BC['BCx2'][1] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx2'][1][0]*BC['BCx2'][1][1] # h*Tinf for conv
-                    Bix=BC['BCx2'][1][0]*dx[0,-1]/k
-                if BC2y=='F':
-                    qy=BC['BCy1'][-2] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy1'][-2][0]*BC['BCy1'][-2][1] # h*Tinf for conv
-                    Biy=BC['BCy1'][-2][0]*dy[0,-1]/k
-                
-                self.T[0,-1]=(dx[0,-1]**2*dy[0,-1]/k*qy+dy[0,-1]**2*dx[0,-1]/k*qx \
-                    +dy[0,-1]**2*self.T[0,-2]+dx[0,-1]**2*self.T[1,-1])\
-                      /(dy[0,-1]**2+dx[0,-1]**2+dx[0,-1]**2*Biy+dy[0,-1]**2*Bix)
-            
-            if (BC3x!='T' and BC3y!='T'):
-                if BC3x=='F':
-                    qx=BC['BCx2'][-2] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx2'][-2][0]*BC['BCx2'][-2][1] # h*Tinf for conv
-                    Bix=BC['BCx2'][-2][0]*dx[-1,-1]/k
-                if BC3y=='F':
-                    qy=BC['BCy2'][-2] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy2'][-2][0]*BC['BCy2'][-2][1] # h*Tinf for conv
-                    Biy=BC['BCy2'][-2][0]*dy[-1,-1]/k
-                
-                self.T[-1,-1]=(dx[-1,-1]**2*dy[-1,-1]/k*qy+dy[-1,-1]**2*dx[-1,-1]/k*qx \
-                    +dy[0,-1]**2*self.T[-1,-2]+dx[-1,-1]**2*self.T[-2,-1])\
-                      /(dy[-1,-1]**2+dx[-1,-1]**2+dx[-1,-1]**2*Biy+dy[-1,-1]**2*Bix)
-            
-            if (BC4x!='T' and BC4y!='T'):
-                if BC4x=='F':
-                    qx=BC['BCx1'][-2] # flux value on x
-                    Bix=0
-                else:
-                    qx=BC['BCx1'][-2][0]*BC['BCx1'][-2][1] # h*Tinf for conv
-                    Bix=BC['BCx1'][-2][0]*dx[-1,0]/k
-                if BC4y=='F':
-                    qy=BC['BCy2'][1] # flux value on y
-                    Biy=0
-                else:
-                    qy=BC['BCy2'][1][0]*BC['BCy2'][1][1] # h*Tinf for conv
-                    Biy=BC['BCy2'][1][0]*dy[-1,0]/k
-                
-                self.T[-1,0]=(dx[-1,0]**2*dy[-1,0]/k*qy+dy[-1,0]**2*dx[-1,0]/k*qx \
-                    +dy[0,0]**2*self.T[-1,1]+dx[-1,0]**2*self.T[-2,0])\
-                      /(dy[-1,0]**2+dx[-1,0]**2+dx[-1,0]**2*Biy+dy[-1,0]**2*Bix)
-
-            if self.CheckConv(Tc,self.T):
-                break            

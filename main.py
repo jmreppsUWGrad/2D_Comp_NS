@@ -43,11 +43,12 @@ import FileClasses
 settings={} # Dictionary of problem settings
 BCs={} # Dictionary of boundary conditions
 # Geometry details
-settings['Length']                  = 4.0
-settings['Width']                   = 0.5
-settings['Nodes_x']                 = 51
+settings['Length']                  = 1.0
+settings['Width']                   = 0.05
+settings['Nodes_x']                 = 101
 settings['Nodes_y']                 = 101
 settings['Fluid']                   = 'Air'
+#CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid'])
 settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
 settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
 settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
@@ -57,9 +58,9 @@ settings['Gravity_y']               = 0
 
 # Meshing details
 settings['bias_type_x']             = None
-settings['bias_size_x']             = 0.003 # Smallest element size (IN PROGRESS)
+settings['bias_size_x']             = 0.005 # Smallest element size (IN PROGRESS)
 settings['bias_type_y']             = None
-settings['bias_size_y']             = 10**(-6) # Smallest element size (IN PROGRESS)
+settings['bias_size_y']             = 0.00005 # Smallest element size (IN PROGRESS)
 
 # Boundary conditions
 BCs['bc_type_left']                 = 'periodic'
@@ -96,14 +97,19 @@ BCs['bc_north_T']                   = 300
 
 # Time advancement
 settings['CFL']                     = 0.05
-settings['total_time_steps']        = 50
+settings['total_time_steps']        = 100
 settings['Time_Scheme']             = 'RK4'
 
-
+print('######################################################')
+print('#              2D Navier-Stokes Solver               #')
+print('#              Created by J. Mark Epps               #')
+print('#          Part of Masters Thesis at UW 2018-2020    #')
+print('######################################################\n')
 print 'Initializing geometry package...'
 #domain=OneDimLine(L,Nx)
 domain=TwoDimPlanar(settings)
 domain.mesh()
+print '################################'
 
 ##########################################################################
 # -------------------------------------Initialize solver and domain
@@ -111,7 +117,7 @@ domain.mesh()
 
 print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
-
+print '################################'
 print 'Initializing domain...'
 T=numpy.zeros((domain.Ny,domain.Nx))
 u=numpy.zeros((domain.Ny,domain.Nx))
@@ -135,7 +141,7 @@ domain.rhou[:,:]=domain.rho[:,:]*u[:,:]
 domain.rhov[:,:]=domain.rho[:,:]*v[:,:]
 domain.rhoE[:,:]=domain.rho[:,:]*(0.5*(u[:,:]**2+v[:,:]**2) \
            +domain.Cv*T[:,:])
-
+print '################################'
 ##########################################################################
 # -------------------------------------File setups
 ##########################################################################
@@ -154,16 +160,11 @@ domain.rhoE[:,:]=domain.rho[:,:]*(0.5*(u[:,:]**2+v[:,:]**2) \
 ## Write input file with settings
 #input_file.input_writer(settings, BCs, domain.rho, domain.rhou, domain.rhov, domain.rhoE)
 #input_file.close()
+#print '################################'
 
 ##########################################################################
 # -------------------------------------Solve
 ##########################################################################
-print('######################################################')
-print('#              2D Navier-Stokes Solver               #')
-print('#              Created by J. Mark Epps               #')
-print('#          Part of Masters Thesis at UW 2018-2020    #')
-print('######################################################\n')
-
 print 'Solving:'
 for nt in range(settings['total_time_steps']):
     print 'Time step %i of %i'%(nt+1, settings['total_time_steps'])
@@ -178,6 +179,8 @@ for nt in range(settings['total_time_steps']):
 # ------------------------------------Post-processing
 ##########################################################################
 u,v,p,T=domain.primitiveFromConserv(domain.rho, domain.rhou, domain.rhov, domain.rhoE)
+rho=domain.rho
+X,Y=domain.X,domain.Y
 # 2D plot
 #fig=pyplot.figure(figsize=(7, 7))
 #ax = fig.gca(projection='3d')
@@ -200,11 +203,11 @@ u,v,p,T=domain.primitiveFromConserv(domain.rho, domain.rhou, domain.rhov, domain
 #fig2.savefig('Plot2.png',dpi=300)
 
 # Velocity Quiver plot and pressure contour
-pl=3
+pl=5
 fig3=pyplot.figure(figsize=(7, 7))
-pyplot.quiver(domain.X[::pl, ::pl], domain.Y[::pl, ::pl], \
+pyplot.quiver(X[::pl, ::pl], Y[::pl, ::pl], \
               u[::pl, ::pl], v[::pl, ::pl]) 
-pyplot.contourf(domain.X, domain.Y, p, alpha=0.5, cmap=cm.viridis)  
+pyplot.contourf(X, Y, p, alpha=0.5, cmap=cm.viridis)  
 pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
@@ -213,11 +216,20 @@ pyplot.title('Velocity plot and Pressure contours');
 
 # Temperature contour
 fig4=pyplot.figure(figsize=(7, 7))
-pyplot.contourf(domain.X, domain.Y, T, alpha=0.5, cmap=cm.viridis)  
+pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
 pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
 pyplot.title('Temperature distribution');
+#fig4.savefig(datTime+'_Temp.png',dpi=300)
+
+# Density contour
+fig5=pyplot.figure(figsize=(7, 7))
+pyplot.contourf(X, Y, rho, alpha=0.5, cmap=cm.viridis)  
+pyplot.colorbar()
+pyplot.xlabel('$x$ (m)')
+pyplot.ylabel('$y$ (m)')
+pyplot.title('Density distribution');
 #fig4.savefig(datTime+'_Temp.png',dpi=300)
 
 print('Solver has finished its run')

@@ -88,6 +88,22 @@ class TwoDimPlanarSolve():
     # Time step check with dx, dy, T and CFL number
     def getdt(self, T):
         dx=numpy.sqrt(self.dx**2+self.dy**2)
+        
+        dx=numpy.zeros_like(self.dx)
+        dx[1:-1,1:-1]=0.5*numpy.sqrt((self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])**2+\
+                  (self.dy[1:-1,1:-1]+self.dy[:-2,1:-1])**2)
+        dx[0,0]      =0.5*numpy.sqrt((self.dx[0,0])**2+(self.dy[0,0])**2)
+        dx[0,1:-1]   =0.5*numpy.sqrt((self.dx[0,1:-1]+self.dx[0,:-2])**2+\
+                  (self.dy[0,1:-1])**2)
+        dx[1:-1,0]   =0.5*numpy.sqrt((self.dx[1:-1,0])**2+\
+                  (self.dy[1:-1,0]+self.dy[:-2,0])**2)
+        dx[0,-1]     =0.5*numpy.sqrt((self.dx[0,-1])**2+(self.dy[0,-1])**2)
+        dx[-1,0]     =0.5*numpy.sqrt((self.dx[-1,0])**2+(self.dy[-1,0])**2)
+        dx[-1,1:-1]  =0.5*numpy.sqrt((self.dx[-1,1:-1]+self.dx[-1,:-2])**2+\
+                  (self.dy[-1,1:-1])**2)
+        dx[1:-1,-1]  =0.5*numpy.sqrt((self.dx[1:-1,-1])**2+(self.dy[1:-1,-1]+\
+                  self.dy[:-2,-1])**2)
+        dx[-1,-1]    =0.5*numpy.sqrt((self.dx[-1,-1])**2+(self.dy[-1,-1])**2)
 #        print(dx)
         c=numpy.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
 #        print(c)
@@ -122,7 +138,7 @@ class TwoDimPlanarSolve():
 #        ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
 
         ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
-        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/(dy[1:-1,:]+dx[:-2,:])
+        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
         
         ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
         ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])

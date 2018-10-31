@@ -124,30 +124,32 @@ class TwoDimPlanarSolve():
         - RK time advancement (eventually)
         
     """
-    # Flux computer (flux of conservative variables AND gradient calculations)
-    # Calculates for entire domain assuming periodicity in both dimensions
-    # (BCs other than Periodicity is applied after calculating new values)
+    # Flux of conservative variables
+    # Calculates for entire domain and accounts for periodicity
+    # Can be hacked to solve gradients setting rho to 1.0 and u or v to zeros
     def compute_Flux(self, rho, u, v, dx, dy):
-#        dx*=2 # Central difference schemes
-#        dy*=2
         ddx=numpy.empty_like(u)
         ddy=numpy.empty_like(v)
         rhou=rho*u
         rhov=rho*v
-#        ddx=(rhou[1:-1,2:]-rhou[1:-1,:-2])/dx[1:-1,1:-1]
-#        ddy=(rhov[2:,1:-1]-rhov[:-2,1:-1])/dy[1:-1,1:-1]
 
         ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
         ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
         
-        ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
-        ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
-        
-        ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
-        ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
-        
-#        dx/=2.0 # Reset original discretizations
-#        dy/=2.0
+        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+            ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
+            ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
+        else:
+            # Forward/backward differences for boundaries
+            ddx[:,0] =(rhou[:,1]-rhou[:,0])/(dx[:,0])
+            ddx[:,-1]=(rhou[:,-1]-rhou[:,-2])/(dx[:,-1])
+        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+            ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
+            ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
+        else:
+            # Forward/backward differences for boundaries
+            ddy[0,:] =(rhov[1,:]-rhov[0,:])/(dy[0,:])
+            ddy[-1,:]=(rhov[-1,:]-rhov[-2,:])/(dy[-1,:])
         
         return ddx+ddy
     
@@ -207,23 +209,26 @@ class TwoDimPlanarSolve():
     
     # Heat conduction gradient source term
     def Source_Cond(self, T, dx, dy):
-#        dx*=2
-#        dy*=2
         qx=numpy.empty_like(T)
         qy=numpy.empty_like(T)
         k=self.Domain.k
         # Central difference
         qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
         qy[1:-1,:]=-k*(T[2:,:]-T[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
-        # Forward/backward difference for boundaries
-#        dx/=2
-#        dy/=2
-        qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
-        qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        # Forward/backward difference for boundaries (if not periodic)
+        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):        
+            qx[:,0] =-k*(T[:,1]-T[:,-1])/(dx[:,0]+dx[:,-1])
+            qx[:,-1]=-k*(T[:,0]-T[:,-2])/(dx[:,-1]+dx[:,-2])
+        else:
+            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
+            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
         
-        qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
-        qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
-        
+        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+            qy[0,:] =-k*(T[1,:]-T[-1,:])/(dy[0,:]+dy[-1,:])
+            qy[-1,:]=-k*(T[0,:]-T[-2,:])/(dy[-1,:]+dy[-2,:])
+        else:
+            qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
+            qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
         return self.compute_Flux(1.0,qx,qy,dx,dy)
     
     # Bondary condition handler (not including periodic BCs)

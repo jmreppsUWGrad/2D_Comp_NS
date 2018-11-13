@@ -184,11 +184,12 @@ class TwoDimPlanar:
     def primitiveFromConserv(self, rho, rhou, rhov, rhoE):
         u=rhou/rho
         v=rhov/rho
-        T=(rhoE/rho-0.5*(u**2+v**2))/self.Cv
-        
         # Ideal gas law assumed
-        p=rho*self.R*T
-        
+#        T=(rhoE/rho-0.5*(u**2+v**2))/self.Cv
+#        p=rho*self.R*T
+        p=(rhoE-0.5*rho*(u**2+v**2))*(self.gamma-1)
+        T=p/(rho*self.R)
+
         return u,v,p,T
     
     # Calculate temperature dependent properties (unsure if this will be the spot)

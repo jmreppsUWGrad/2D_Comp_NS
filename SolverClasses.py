@@ -287,11 +287,15 @@ class TwoDimPlanarSolve():
             
             if self.BCs['bc_type_south']=='outlet':
                 self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
+            elif self.BCs['bc_type_south']=='slip_wall':
+                self.Domain.tau12[0,1:-1] =0
             else:
                 self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
                              (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
             if self.BCs['bc_type_north']=='outlet':
                 self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
+            elif self.BCs['bc_type_north']=='slip_wall':
+                self.Domain.tau12[-1,1:-1]=0
             else:
                 self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
                                  (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
@@ -308,11 +312,15 @@ class TwoDimPlanarSolve():
             
             if self.BCs['bc_type_left']=='outlet':
                 self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
+            elif self.BCs['bc_type_left']=='slip_wall':
+                self.Domain.tau12[1:-1,0] =0
             else:
                 self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
                                  (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
             if self.BCs['bc_type_right']=='outlet':
                 self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
+            elif self.BCs['bc_type_right']=='slip_wall':
+                self.Domain.tau12[1:-1,-1]=0
             else:
                 self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
                                  (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
@@ -417,6 +425,19 @@ class TwoDimPlanarSolve():
                 T[:,0]  =self.BCs['bc_left_T']
             rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
             rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
+        
+        elif self.BCs['bc_type_left']=='slip_wall':
+            rhou[:,0]  =0
+            p[:,0]  =p[:,1]
+            if (type(self.BCs['bc_left_T']) is str)\
+                and (self.BCs['bc_left_T']=='zero_grad'):
+                T[:,0]  =T[:,1]
+            elif type(self.BCs['bc_left_T']) is tuple:
+                T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
+            else:
+                T[:,0]  =self.BCs['bc_left_T']
+            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
+            rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
             
         elif self.BCs['bc_type_left']=='inlet':
             u[:,0]  =self.BCs['bc_left_u']
@@ -439,39 +460,39 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_left']=='outlet':
             p[:,0]=self.BCs['bc_left_p']
         
-        elif self.BCs['bc_type_left']!='periodic':
-#            print 'Left: non-periodic'
-            if (type(self.BCs['bc_left_rho']) is str)\
-                and (self.BCs['bc_left_rho']=='zero_grad'):
-                rho[:,0]=rho[:,1]
-            else:
-                rho[:,0]=self.BCs['bc_left_rho']
-            if (type(self.BCs['bc_left_p']) is str)\
-                and (self.BCs['bc_left_p']=='zero_grad'):
-                p[:,0]  =p[:,1]
-            else:
-                p[:,0]  =self.BCs['bc_left_p']
-            if (type(self.BCs['bc_left_u']) is str)\
-                and (self.BCs['bc_left_u']=='zero_grad'):
-                u[:,0]  =u[:,1]
-            else:
-                u[:,0]  =self.BCs['bc_left_u']
-            if (type(self.BCs['bc_left_v']) is str)\
-                and (self.BCs['bc_left_v']=='zero_grad'):
-                v[:,0]  =v[:,1]
-            else:
-                v[:,0]  =self.BCs['bc_left_v']
-            if (type(self.BCs['bc_left_T']) is str)\
-                and (self.BCs['bc_left_T']=='zero_grad'):
-                T[:,0]  =T[:,1]
-            else:
-                T[:,0]  =self.BCs['bc_left_T']
-            
-            rhou[:,0]=rho[:,0]*u[:,0]
-            rhov[:,0]=rho[:,0]*v[:,0]
-            rhoE[:,0]=rho[:,0]*\
-                (0.5*(u[:,0]**2+v[:,0]**2)+\
-                 self.Domain.Cv*T[:,0])
+#        elif self.BCs['bc_type_left']!='periodic':
+##            print 'Left: non-periodic'
+#            if (type(self.BCs['bc_left_rho']) is str)\
+#                and (self.BCs['bc_left_rho']=='zero_grad'):
+#                rho[:,0]=rho[:,1]
+#            else:
+#                rho[:,0]=self.BCs['bc_left_rho']
+#            if (type(self.BCs['bc_left_p']) is str)\
+#                and (self.BCs['bc_left_p']=='zero_grad'):
+#                p[:,0]  =p[:,1]
+#            else:
+#                p[:,0]  =self.BCs['bc_left_p']
+#            if (type(self.BCs['bc_left_u']) is str)\
+#                and (self.BCs['bc_left_u']=='zero_grad'):
+#                u[:,0]  =u[:,1]
+#            else:
+#                u[:,0]  =self.BCs['bc_left_u']
+#            if (type(self.BCs['bc_left_v']) is str)\
+#                and (self.BCs['bc_left_v']=='zero_grad'):
+#                v[:,0]  =v[:,1]
+#            else:
+#                v[:,0]  =self.BCs['bc_left_v']
+#            if (type(self.BCs['bc_left_T']) is str)\
+#                and (self.BCs['bc_left_T']=='zero_grad'):
+#                T[:,0]  =T[:,1]
+#            else:
+#                T[:,0]  =self.BCs['bc_left_T']
+#            
+#            rhou[:,0]=rho[:,0]*u[:,0]
+#            rhov[:,0]=rho[:,0]*v[:,0]
+#            rhoE[:,0]=rho[:,0]*\
+#                (0.5*(u[:,0]**2+v[:,0]**2)+\
+#                 self.Domain.Cv*T[:,0])
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_left_p']!=None:
@@ -483,6 +504,19 @@ class TwoDimPlanarSolve():
             p[:,-1]  =p[:,-2]
             rhou[:,-1]  =0
             rhov[:,-1]  =0
+            if (type(self.BCs['bc_right_T']) is str)\
+                and (self.BCs['bc_right_T']=='zero_grad'):
+                T[:,-1]  =T[:,-2]
+            elif type(self.BCs['bc_right_T']) is tuple:
+                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
+            else:
+                T[:,-1]  =self.BCs['bc_right_T']
+            rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
+            rhoE[:,-1]=rho[:,-1]*self.Domain.Cv*T[:,-1]
+            
+        elif self.BCs['bc_type_right']=='slip_wall':
+            p[:,-1]  =p[:,-2]
+            rhou[:,-1]  =0
             if (type(self.BCs['bc_right_T']) is str)\
                 and (self.BCs['bc_right_T']=='zero_grad'):
                 T[:,-1]  =T[:,-2]
@@ -513,39 +547,39 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_right']=='outlet':
             p[:,-1]=self.BCs['bc_right_p']
         
-        elif self.BCs['bc_type_right']!='periodic':
-#            print 'Right: non-periodic'
-            if (type(self.BCs['bc_right_rho']) is str)\
-                and (self.BCs['bc_right_rho']=='zero_grad'):
-                rho[:,-1]=rho[:,-2]
-            else:
-                rho[:,-1]=self.BCs['bc_right_rho']
-            if (type(self.BCs['bc_right_p']) is str)\
-                and (self.BCs['bc_right_p']=='zero_grad'):
-                p[:,-1]  =p[:,-2]  
-            else:
-                p[:,-1]  =self.BCs['bc_right_p']
-            if (type(self.BCs['bc_right_u']) is str)\
-                and (self.BCs['bc_right_u']=='zero_grad'):
-                u[:,-1]  =u[:,-2]  
-            else:
-                u[:,-1]  =self.BCs['bc_right_u']
-            if (type(self.BCs['bc_right_v']) is str)\
-                and (self.BCs['bc_right_v']=='zero_grad'):
-                v[:,-1]  =v[:,-2]  
-            else:
-                v[:,-1]  =self.BCs['bc_right_v']
-            if (type(self.BCs['bc_right_T']) is str)\
-                and (self.BCs['bc_right_T']=='zero_grad'):
-                T[:,-1]  =T[:,-2]  
-            else:
-                T[:,-1]  =self.BCs['bc_right_T']
-            
-            rhou[:,-1]=rho[:,-1]*u[:,-1]
-            rhov[:,-1]=rho[:,-1]*v[:,-1]
-            rhoE[:,-1]=rho[:,-1]*\
-                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
-                 self.Domain.Cv*T[:,-1])
+#        elif self.BCs['bc_type_right']!='periodic':
+##            print 'Right: non-periodic'
+#            if (type(self.BCs['bc_right_rho']) is str)\
+#                and (self.BCs['bc_right_rho']=='zero_grad'):
+#                rho[:,-1]=rho[:,-2]
+#            else:
+#                rho[:,-1]=self.BCs['bc_right_rho']
+#            if (type(self.BCs['bc_right_p']) is str)\
+#                and (self.BCs['bc_right_p']=='zero_grad'):
+#                p[:,-1]  =p[:,-2]  
+#            else:
+#                p[:,-1]  =self.BCs['bc_right_p']
+#            if (type(self.BCs['bc_right_u']) is str)\
+#                and (self.BCs['bc_right_u']=='zero_grad'):
+#                u[:,-1]  =u[:,-2]  
+#            else:
+#                u[:,-1]  =self.BCs['bc_right_u']
+#            if (type(self.BCs['bc_right_v']) is str)\
+#                and (self.BCs['bc_right_v']=='zero_grad'):
+#                v[:,-1]  =v[:,-2]  
+#            else:
+#                v[:,-1]  =self.BCs['bc_right_v']
+#            if (type(self.BCs['bc_right_T']) is str)\
+#                and (self.BCs['bc_right_T']=='zero_grad'):
+#                T[:,-1]  =T[:,-2]  
+#            else:
+#                T[:,-1]  =self.BCs['bc_right_T']
+#            
+#            rhou[:,-1]=rho[:,-1]*u[:,-1]
+#            rhov[:,-1]=rho[:,-1]*v[:,-1]
+#            rhoE[:,-1]=rho[:,-1]*\
+#                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
+#                 self.Domain.Cv*T[:,-1])
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_right_p']!=None:
             p[:,-1]=self.BCs['bc_right_p']
@@ -555,6 +589,19 @@ class TwoDimPlanarSolve():
 #            print 'South: wall'
             p[0,:]  =p[1,:]
             rhou[0,:]  =0
+            rhov[0,:]  =0
+            if (type(self.BCs['bc_south_T']) is str)\
+                and (self.BCs['bc_south_T']=='zero_grad'):
+                T[0,:]  =T[1,:]
+            elif type(self.BCs['bc_south_T']) is tuple:
+                T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
+            else:
+                T[0,:]  =self.BCs['bc_south_T']
+            rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
+            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
+            
+        elif self.BCs['bc_type_south']=='slip_wall':
+            p[0,:]  =p[1,:]
             rhov[0,:]  =0
             if (type(self.BCs['bc_south_T']) is str)\
                 and (self.BCs['bc_south_T']=='zero_grad'):
@@ -586,39 +633,39 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_south']=='outlet':
             p[0,:]=self.BCs['bc_south_p']
         
-        elif self.BCs['bc_type_south']!='periodic':
-#            print 'South: non-periodic'
-            if (type(self.BCs['bc_south_rho']) is str)\
-                and (self.BCs['bc_south_rho']=='zero_grad'):
-                rho[0,:]=rho[1,:]
-            else:
-                rho[0,:]=self.BCs['bc_south_rho']
-            if (type(self.BCs['bc_south_p']) is str)\
-                and (self.BCs['bc_south_p']=='zero_grad'):
-                p[0,:]  =p[1,:]  
-            else:
-                p[0,:]  =self.BCs['bc_south_p']
-            if (type(self.BCs['bc_south_u']) is str)\
-                and (self.BCs['bc_south_u']=='zero_grad'):
-                u[0,:]  =u[1,:]  
-            else:
-                u[0,:]  =self.BCs['bc_south_u']
-            if (type(self.BCs['bc_south_v']) is str)\
-                and (self.BCs['bc_south_v']=='zero_grad'):
-                v[0,:]  =v[1,:]  
-            else:
-                v[0,:]  =self.BCs['bc_south_v']
-            if (type(self.BCs['bc_south_T']) is str)\
-                and (self.BCs['bc_south_T']=='zero_grad'):
-                T[0,:]  =T[1,:]  
-            else:
-                T[0,:]  =self.BCs['bc_south_T']
-
-            rhou[0,:]=rho[0,:]*u[0,:]
-            rhov[0,:]=rho[0,:]*v[0,:]
-            rhoE[0,:]=rho[0,:]*\
-                (0.5*(u[0,:]**2+v[0,:]**2)+\
-                 self.Domain.Cv*T[0,:])                
+#        elif self.BCs['bc_type_south']!='periodic':
+##            print 'South: non-periodic'
+#            if (type(self.BCs['bc_south_rho']) is str)\
+#                and (self.BCs['bc_south_rho']=='zero_grad'):
+#                rho[0,:]=rho[1,:]
+#            else:
+#                rho[0,:]=self.BCs['bc_south_rho']
+#            if (type(self.BCs['bc_south_p']) is str)\
+#                and (self.BCs['bc_south_p']=='zero_grad'):
+#                p[0,:]  =p[1,:]  
+#            else:
+#                p[0,:]  =self.BCs['bc_south_p']
+#            if (type(self.BCs['bc_south_u']) is str)\
+#                and (self.BCs['bc_south_u']=='zero_grad'):
+#                u[0,:]  =u[1,:]  
+#            else:
+#                u[0,:]  =self.BCs['bc_south_u']
+#            if (type(self.BCs['bc_south_v']) is str)\
+#                and (self.BCs['bc_south_v']=='zero_grad'):
+#                v[0,:]  =v[1,:]  
+#            else:
+#                v[0,:]  =self.BCs['bc_south_v']
+#            if (type(self.BCs['bc_south_T']) is str)\
+#                and (self.BCs['bc_south_T']=='zero_grad'):
+#                T[0,:]  =T[1,:]  
+#            else:
+#                T[0,:]  =self.BCs['bc_south_T']
+#
+#            rhou[0,:]=rho[0,:]*u[0,:]
+#            rhov[0,:]=rho[0,:]*v[0,:]
+#            rhoE[0,:]=rho[0,:]*\
+#                (0.5*(u[0,:]**2+v[0,:]**2)+\
+#                 self.Domain.Cv*T[0,:])                
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_south_p']!=None:
@@ -639,6 +686,18 @@ class TwoDimPlanarSolve():
                 T[-1,:]  =self.BCs['bc_north_T']
             rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
             rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
+            
+        elif self.BCs['bc_type_north']=='slip_wall':
+            p[-1,:]  =p[-2,:]
+            rhov[-1,:]  =0
+            if (type(self.BCs['bc_north_T']) is str)\
+                and (self.BCs['bc_north_T']=='zero_grad'):
+                T[-1,:]  =T[-2,:]
+            elif type(self.BCs['bc_north_T']) is tuple:
+                T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
+            else:
+                T[-1,:]  =self.BCs['bc_north_T']
+            rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
         
         elif self.BCs['bc_type_north']=='inlet':
             u[-1,:]  =self.BCs['bc_north_u']
@@ -660,39 +719,39 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_north']=='outlet':
             p[-1,:]=self.BCs['bc_north_p']
         
-        elif self.BCs['bc_type_north']!='periodic':
-#            print 'North: non-periodic'
-            if (type(self.BCs['bc_north_rho']) is str)\
-                and (self.BCs['bc_north_rho']=='zero_grad'):
-                rho[-1,:]=rho[-2,:]
-            else:
-                rho[-1,:]=self.BCs['bc_north_rho']
-            if (type(self.BCs['bc_north_p']) is str)\
-                and (self.BCs['bc_north_p']=='zero_grad'):
-                p[-1,:]  =p[-2,:]  
-            else:
-                p[-1,:]  =self.BCs['bc_north_p']
-            if (type(self.BCs['bc_north_u']) is str)\
-                and (self.BCs['bc_north_u']=='zero_grad'):
-                u[-1,:]  =u[-2,:]  
-            else:
-                u[-1,:]  =self.BCs['bc_north_u']
-            if (type(self.BCs['bc_north_v']) is str)\
-                and (self.BCs['bc_north_v']=='zero_grad'):
-                v[-1,:]  =v[-2,:]  
-            else:
-                v[-1,:]  =self.BCs['bc_north_v']
-            if (type(self.BCs['bc_north_T']) is str)\
-                and (self.BCs['bc_north_T']=='zero_grad'):
-                T[-1,:]  =T[-2,:]  
-            else:
-                T[-1,:]  =self.BCs['bc_north_T']
-                
-            rhou[-1,:]=rho[-1,:]*u[-1,:]
-            rhov[-1,:]=rho[-1,:]*v[-1,:]
-            rhoE[-1,:]=rho[-1,:]*\
-                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
-                 self.Domain.Cv*T[-1,:])
+#        elif self.BCs['bc_type_north']!='periodic':
+##            print 'North: non-periodic'
+#            if (type(self.BCs['bc_north_rho']) is str)\
+#                and (self.BCs['bc_north_rho']=='zero_grad'):
+#                rho[-1,:]=rho[-2,:]
+#            else:
+#                rho[-1,:]=self.BCs['bc_north_rho']
+#            if (type(self.BCs['bc_north_p']) is str)\
+#                and (self.BCs['bc_north_p']=='zero_grad'):
+#                p[-1,:]  =p[-2,:]  
+#            else:
+#                p[-1,:]  =self.BCs['bc_north_p']
+#            if (type(self.BCs['bc_north_u']) is str)\
+#                and (self.BCs['bc_north_u']=='zero_grad'):
+#                u[-1,:]  =u[-2,:]  
+#            else:
+#                u[-1,:]  =self.BCs['bc_north_u']
+#            if (type(self.BCs['bc_north_v']) is str)\
+#                and (self.BCs['bc_north_v']=='zero_grad'):
+#                v[-1,:]  =v[-2,:]  
+#            else:
+#                v[-1,:]  =self.BCs['bc_north_v']
+#            if (type(self.BCs['bc_north_T']) is str)\
+#                and (self.BCs['bc_north_T']=='zero_grad'):
+#                T[-1,:]  =T[-2,:]  
+#            else:
+#                T[-1,:]  =self.BCs['bc_north_T']
+#                
+#            rhou[-1,:]=rho[-1,:]*u[-1,:]
+#            rhov[-1,:]=rho[-1,:]*v[-1,:]
+#            rhoE[-1,:]=rho[-1,:]*\
+#                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
+#                 self.Domain.Cv*T[-1,:])
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_north_p']!=None:
@@ -736,7 +795,7 @@ class TwoDimPlanarSolve():
         if (numpy.isnan(dt)) or (dt<=0):
             print 'Time step size: %f'%dt
             print '*********Diverging time step***********'
-            return 1
+            return 1, dt
         print 'Time step size: %.6f'%dt
         
         for step in range(Nstep):
@@ -791,7 +850,20 @@ class TwoDimPlanarSolve():
                 # Apply boundary conditions
                 ###################################################################
                 self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T, self.dx, self.dy)
-            
+                
+                # Experiment-rectangular solid inside domain, border on south face
+#                u[:10,20:30]=0
+#                v[:10,20:30]=0
+#                T[:10,20:30]=600
+#                p[:10,20]=p[:10,19]
+#                p[:10,30]=p[:10,31]
+#                p[10,20:30]=p[11,20:30]
+#                
+#                rho_c[:10,20:30]=p[:10,20:30]/self.Domain.R/T[:10,20:30]
+#                rhou_c[:10,20:30]=rho_c[:10,20:30]*u[:10,20:30]
+#                rhov_c[:10,20:30]=rho_c[:10,20:30]*v[:10,20:30]
+#                rhoE_c[:10,20:30]=rho_c[:10,20:30]*0.5*(u[:10,20:30]**2+v[:10,20:30]**2+2*self.Domain.Cv*T[:10,20:30])
+    
             ###################################################################
             # END OF TIME STEP CALCULATIONS
             ###################################################################
@@ -810,7 +882,20 @@ class TwoDimPlanarSolve():
         ###################################################################
         self.Apply_BCs(self.Domain.rho, self.Domain.rhou, self.Domain.rhov,\
                        self.Domain.rhoE, u, v, p, T, self.dx, self.dy)
-        
+        # Experiment-rectangular solid inside domain, border on south face
+#        u[:10,20:30]=0
+#        v[:10,20:30]=0
+#        T[:10,20:30]=600
+#        p[:10,20]=p[:10,19]
+#        p[:10,30]=p[:10,31]
+#        p[10,20:30]=p[11,20:30]
+#        p[1:9,21:29]=101325
+#        
+#        self.Domain.rho[:10,20:30]=p[:10,20:30]/self.Domain.R/T[:10,20:30]
+#        self.Domain.rhou[:10,20:30]=self.Domain.rho[:10,20:30]*u[:10,20:30]
+#        self.Domain.rhov[:10,20:30]=self.Domain.rho[:10,20:30]*v[:10,20:30]
+#        self.Domain.rhoE[:10,20:30]=self.Domain.rho[:10,20:30]*0.5*(u[:10,20:30]**2+v[:10,20:30]**2+2*self.Domain.Cv*T[:10,20:30])
+    
         ###################################################################
         # Divergence check
         ###################################################################
@@ -820,7 +905,7 @@ class TwoDimPlanarSolve():
             (numpy.isnan(numpy.amax(self.Domain.rhov))) or \
             (numpy.isnan(numpy.amax(self.Domain.rhoE))):
             print '**************Divergence detected****************'
-            return 1
+            return 1, dt
         
         ###################################################################
         # Output data to file?????
@@ -828,4 +913,4 @@ class TwoDimPlanarSolve():
         
         
         
-        return 0
+        return 0, dt

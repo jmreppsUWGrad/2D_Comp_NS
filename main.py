@@ -41,6 +41,7 @@ BCs['bc_north_u']                   = None
 BCs['bc_north_v']                   = None
 BCs['bc_north_p']                   = None
 BCs['bc_north_T']                   = 300
+# numpy.linspace(400, 900, settings['Nodes_x'])
 
 Inlet/outlet
 BCs['bc_type_left']                 = 'inlet'
@@ -72,8 +73,48 @@ BCs['bc_north_p']                   = None
 BCs['bc_north_T']                   = 600
 # numpy.linspace(400, 900, settings['Nodes_x'])
 
+BCs['bc_type_left']                 = 'wall'
+BCs['bc_left_rho']                  = None
+BCs['bc_left_u']                    = None
+BCs['bc_left_v']                    = None
+BCs['bc_left_p']                    = None
+BCs['bc_left_T']                    = 300
+# numpy.linspace(400, 900, settings['Nodes_y'])
+BCs['bc_type_right']                = 'wall'
+BCs['bc_right_rho']                 = None
+BCs['bc_right_u']                   = None
+BCs['bc_right_v']                   = None
+BCs['bc_right_p']                   = None
+BCs['bc_right_T']                   = 300
+# numpy.linspace(400, 900, settings['Nodes_y'])
+BCs['bc_type_south']                = 'wall'
+BCs['bc_south_rho']                 = None
+BCs['bc_south_u']                   = None
+BCs['bc_south_v']                   = None
+BCs['bc_south_p']                   = None
+BCs['bc_south_T']                   = 300
+# numpy.linspace(400, 900, settings['Nodes_x'])
+BCs['bc_type_north']                = 'wall'
+BCs['bc_north_rho']                 = None
+BCs['bc_north_u']                   = None
+BCs['bc_north_v']                   = None
+BCs['bc_north_p']                   = None
+BCs['bc_north_T']                   = 300
+# numpy.linspace(400, 900, settings['Nodes_x'])
 @author: Joseph
 """
+# Parabolic velocity profile creator
+# Assumption of equally spaced y coordinates
+#def parabolic_Vel(u_max, u_min, y):
+#    u=numpy.zeros_like(y)
+#    u[0]=u_min
+#    u[-1]=u_min
+#    smallest=self.xbias[1]
+#    u[:int(len(y)/2)]=numpy.linspace(2*self.L/(self.Nx-1)-smallest,smallest,(self.Nx-1)/2)
+#    u[int(len(y)/2):-1]=numpy.linspace(smallest,2*self.L/(self.Nx-1)-smallest,(self.Nx-1)/2)
+#    
+#    return u
+
 
 ##########################################################################
 # ----------------------------------Libraries and classes
@@ -102,16 +143,16 @@ import FileClasses
 settings={} # Dictionary of problem settings
 BCs={} # Dictionary of boundary conditions
 # Geometry details
-settings['Length']                  = 4.0
-settings['Width']                   = 2.0
-settings['Nodes_x']                 = 51
-settings['Nodes_y']                 = 101
+settings['Length']                  = 3.0
+settings['Width']                   = 3.0
+settings['Nodes_x']                 = 125
+settings['Nodes_y']                 = 125
 settings['Fluid']                   = 'Air'
 #CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid'])
 settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
 settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
 settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
-settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])
+settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])#0.02
 settings['Gravity_x']               = 0
 settings['Gravity_y']               = 0
 
@@ -136,6 +177,7 @@ Options:
     -'periodic': [IN PROGRESS] specify pressure, is poiseuille flow
     -'wall': specify T; no slip and dp=0 enforced implicitly
     -'wall': T gradient as ('grad',[value]); no slip and dp=0 enforced implicitly
+    -'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
     -'outlet': specify pressure; rest is calculated from interior points
     -'inlet': specify velocities, temperature and pressure
 Profiles possible; must be same size as number of nodes on that boundary
@@ -175,8 +217,9 @@ BCs['bc_north_T']                   = 300
 Use_inital_values                   = False
 
 # Time advancement
-settings['CFL']                     = 0.5
-settings['total_time_steps']        = 50
+settings['CFL']                     = 0.9
+settings['total_time_steps']        = None
+settings['total_time']              = 0.001
 settings['Time_Scheme']             = 'RK4'
 
 print('######################################################')
@@ -210,6 +253,8 @@ if not Use_inital_values:
     #domain.rho[:,:]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
     T[:,:]=300
     p[:,:]=101325
+#    p[:,:int(settings['Nodes_x']/2)]=101325
+#    p[:,int(settings['Nodes_x']/2):]=3*101325
     #p=domain.rho*domain.R*T
     domain.rho=p/(domain.R*T)
 else:
@@ -220,7 +265,20 @@ domain.rhoE=domain.rho*(0.5*(u**2+v**2)+domain.Cv*T)
 
 solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
                  u, v, p, T, solver.dx, solver.dy)
-
+# Experiment-rectangular solid inside domain, border on south face
+#u[:10,20:30]=0
+#v[:10,20:30]=0
+#T[:10,20:30]=600
+#p[:10,20]=p[:10,19]
+#p[:10,30]=p[:10,31]
+#p[10,20:30]=p[11,20:30]
+#p[1:9,21:29]=101325
+#
+#domain.rho[:10,20:30]=p[:10,20:30]/domain.R/T[:10,20:30]
+#domain.rhou[:10,20:30]=domain.rho[:10,20:30]*u[:10,20:30]
+#domain.rhov[:10,20:30]=domain.rho[:10,20:30]*v[:10,20:30]
+#domain.rhoE[:10,20:30]=domain.rho[:10,20:30]*0.5*(u[:10,20:30]**2+v[:10,20:30]**2+2*domain.Cv*T[:10,20:30])
+    
 print '################################'
 ##########################################################################
 # -------------------------------------File setups
@@ -246,13 +304,22 @@ print '################################'
 # -------------------------------------Solve
 ##########################################################################
 print 'Solving:'
-for nt in range(settings['total_time_steps']):
-    print 'Time step %i of %i'%(nt+1, settings['total_time_steps'])
-    err=solver.Advance_Soln()
+t,nt=0,0
+if settings['total_time_steps']==None:
+    settings['total_time_steps']=settings['total_time']*10**9
+if settings['total_time']==None:
+    settings['total_time']=settings['total_time_steps']
+
+while nt<settings['total_time_steps'] and t<settings['total_time']:
+#for nt in range(settings['total_time_steps']):
+    print 'Time step %i, Time elapsed=%f'%(nt+1,t)
+    err,dt=solver.Advance_Soln()
     if err==1:
         print '#################### Solver aborted #######################'
         break
-
+    t+=dt
+    nt+=1
+    
 #output_file.close()
 
 ##########################################################################
@@ -274,17 +341,26 @@ X,Y=domain.X,domain.Y
 #fig.savefig('Plot1.png',dpi=300)
 
 # 1D Plot
-#fig2=pyplot.figure(figsize=(7,7))
-#pyplot.plot(domain.Y[:,1]*1000, domain.T[:,1],marker='x')
-#pyplot.xlabel('$y$ (mm)')
-#pyplot.ylabel('T (K)')
-#pyplot.title('Temperature distribution at 2nd x')
-#pyplot.xlim(5,6);
+fig2=pyplot.figure(figsize=(7,7))
+pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], T[:,int(settings['Nodes_x']/2)],marker='x')
+pyplot.xlabel('$y$ (m)')
+pyplot.ylabel('T (K)')
+pyplot.title('Temperature distribution')
+pyplot.xlim(0,3);
 #fig2.savefig('Plot2.png',dpi=300)
+
+# 1D Plot
+fig3=pyplot.figure(figsize=(7,7))
+pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], p[:,int(settings['Nodes_x']/2)]-101325,marker='x')
+pyplot.xlabel('$y$ (m)')
+pyplot.ylabel('P (Pa gage)')
+pyplot.title('Pressure distribution')
+pyplot.xlim(0,3);
+#fig3.savefig('Plot2.png',dpi=300)
 
 # Velocity Quiver plot and pressure contour
 pl=5
-fig3=pyplot.figure(figsize=(7, 7))
+fig4=pyplot.figure(figsize=(7, 7))
 pyplot.quiver(X[::pl, ::pl], Y[::pl, ::pl], \
               u[::pl, ::pl], v[::pl, ::pl]) 
 pyplot.contourf(X, Y, p-101325, alpha=0.5, cmap=cm.viridis)  
@@ -292,24 +368,24 @@ pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
 pyplot.title('Velocity plot and Gage Pressure contours');
-#fig3.savefig(datTime+'_Vel_Press.png',dpi=300)
+#fig4.savefig(datTime+'_Vel_Press.png',dpi=300)
 
-## Temperature contour
-#fig4=pyplot.figure(figsize=(7, 7))
+# Temperature contour
+#fig5=pyplot.figure(figsize=(7, 7))
 #pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
 #pyplot.colorbar()
 #pyplot.xlabel('$x$ (m)')
 #pyplot.ylabel('$y$ (m)')
 #pyplot.title('Temperature distribution');
-##fig4.savefig(datTime+'_Temp.png',dpi=300)
-#
-## Density contour
-#fig5=pyplot.figure(figsize=(7, 7))
+#fig5.savefig(datTime+'_Temp.png',dpi=300)
+
+# Density contour
+#fig6=pyplot.figure(figsize=(7, 7))
 #pyplot.contourf(X, Y, rho, alpha=0.5, cmap=cm.viridis)  
 #pyplot.colorbar()
 #pyplot.xlabel('$x$ (m)')
 #pyplot.ylabel('$y$ (m)')
 #pyplot.title('Density distribution');
-##fig4.savefig(datTime+'_Temp.png',dpi=300)
+#fig6.savefig(datTime+'_Temp.png',dpi=300)
 
 print('Solver has finished its run')

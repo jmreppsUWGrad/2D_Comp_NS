@@ -185,10 +185,10 @@ class TwoDimPlanar:
         u=rhou/rho
         v=rhov/rho
         # Ideal gas law assumed
-#        T=(rhoE/rho-0.5*(u**2+v**2))/self.Cv
-#        p=rho*self.R*T
-        p=(rhoE-0.5*rho*(u**2+v**2))*(self.gamma-1)
-        T=p/(rho*self.R)
+        T=(rhoE/rho-0.5*(u**2+v**2))/self.Cv
+        p=rho*self.R*T
+#        p=(rhoE-0.5*rho*(u**2+v**2))*(self.gamma-1)
+#        T=p/(rho*self.R)
 
         return u,v,p,T
     

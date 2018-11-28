@@ -12,6 +12,8 @@ Features to include (across all classes):
         ->Figure out biasing wrt dx and dy array sizes and mesh griding those (GeomClasses)
     -File reader for settings
     -periodic boundary conditions (SolverClasses)
+    -recode Calculate_Stress() in SolverClasses to use compute_Flux() function; make way for WENO scheme
+    -total pressure for inlet calculations
 
 ME765 project setup:
 BCs['bc_type_left']                 = 'periodic'
@@ -46,7 +48,7 @@ BCs['bc_north_T']                   = 300
 Inlet/outlet
 BCs['bc_type_left']                 = 'inlet'
 BCs['bc_left_rho']                  = None
-BCs['bc_left_u']                    = 1.0
+BCs['bc_left_u']                    = 5.0
 BCs['bc_left_v']                    = 0
 BCs['bc_left_p']                    = 2*101325
 BCs['bc_left_T']                    = 300
@@ -145,8 +147,8 @@ BCs={} # Dictionary of boundary conditions
 # Geometry details
 settings['Length']                  = 3.0
 settings['Width']                   = 3.0
-settings['Nodes_x']                 = 125
-settings['Nodes_y']                 = 125
+settings['Nodes_x']                 = 60
+settings['Nodes_y']                 = 60
 settings['Fluid']                   = 'Air'
 #CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid'])
 settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
@@ -154,7 +156,7 @@ settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,set
 settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
 settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])#0.02
 settings['Gravity_x']               = 0
-settings['Gravity_y']               = 0
+settings['Gravity_y']               = -9.81
 
 # Meshing details
 """
@@ -175,52 +177,56 @@ settings['bias_size_y']             = 0.0005 # Smallest element size
 Options:
     -'periodic': no properties need to be specified; implied on opposite face too
     -'periodic': [IN PROGRESS] specify pressure, is poiseuille flow
-    -'wall': specify T; no slip and dp=0 enforced implicitly
-    -'wall': T gradient as ('grad',[value]); no slip and dp=0 enforced implicitly
+    -'wall': specify T, ('grad',[value]) or 'zero_grad'; no slip and dp=0 enforced implicitly
     -'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
     -'outlet': specify pressure; rest is calculated from interior points
-    -'inlet': specify velocities, temperature and pressure
+    -'inlet': [IN PROGRESS] specify velocities, temperature and pressure
 Profiles possible; must be same size as number of nodes on that boundary
-'zero_grad' assumes 0 gradient of that variable (walls only so far)
+'zero_grad' assumes 0 gradient of that variable (temperature so far)
 ('grad',[value]) enforces a gradient normal to boundary (temperature on walls)
 """
-BCs['bc_type_left']                 = 'periodic'
-BCs['bc_left_rho']                  = None
+BCs['bc_type_left']                 = 'outlet'
 BCs['bc_left_u']                    = None
 BCs['bc_left_v']                    = None
-BCs['bc_left_p']                    = None
+BCs['bc_left_p']                    = 101325
 BCs['bc_left_T']                    = None
 # numpy.linspace(400, 900, settings['Nodes_y'])
-BCs['bc_type_right']                = 'periodic'
-BCs['bc_right_rho']                 = None
+BCs['bc_type_right']                = 'outlet'
 BCs['bc_right_u']                   = None
 BCs['bc_right_v']                   = None
-BCs['bc_right_p']                   = None
+BCs['bc_right_p']                   = 101325
 BCs['bc_right_T']                   = None
 # numpy.linspace(400, 900, settings['Nodes_y'])
-BCs['bc_type_south']                = 'wall'
-BCs['bc_south_rho']                 = None
+BCs['bc_type_south']                = 'slip_wall'
 BCs['bc_south_u']                   = None
 BCs['bc_south_v']                   = None
 BCs['bc_south_p']                   = None
 BCs['bc_south_T']                   = 600
 # numpy.linspace(400, 900, settings['Nodes_x'])
-BCs['bc_type_north']                = 'wall'
-BCs['bc_north_rho']                 = None
+BCs['bc_type_north']                = 'slip_wall'
 BCs['bc_north_u']                   = None
 BCs['bc_north_v']                   = None
 BCs['bc_north_p']                   = None
 BCs['bc_north_T']                   = 300
 # numpy.linspace(400, 900, settings['Nodes_x'])
 
-# Initial conditions from previous run/already in memory
-Use_inital_values                   = False
-
 # Time advancement
 settings['CFL']                     = 0.9
-settings['total_time_steps']        = None
-settings['total_time']              = 0.001
+settings['total_time_steps']        = 1
+settings['total_time']              = 3.0
 settings['Time_Scheme']             = 'RK4'
+
+##########################################################################
+# -------------------------------------Read input file
+##########################################################################
+del settings, BCs
+settings={}
+BCs={}
+fin=FileClasses.FileIn('Input_File', 0)
+fin.Read_Input(settings, BCs)
+
+# Initial conditions from previous run/already in memory
+Use_inital_values                   = False
 
 print('######################################################')
 print('#              2D Navier-Stokes Solver               #')
@@ -265,19 +271,21 @@ domain.rhoE=domain.rho*(0.5*(u**2+v**2)+domain.Cv*T)
 
 solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
                  u, v, p, T, solver.dx, solver.dy)
+#domain.rho[:,0]=p[:,0]/(domain.R*T[:,0])
 # Experiment-rectangular solid inside domain, border on south face
-#u[:10,20:30]=0
-#v[:10,20:30]=0
-#T[:10,20:30]=600
-#p[:10,20]=p[:10,19]
-#p[:10,30]=p[:10,31]
-#p[10,20:30]=p[11,20:30]
-#p[1:9,21:29]=101325
-#
-#domain.rho[:10,20:30]=p[:10,20:30]/domain.R/T[:10,20:30]
-#domain.rhou[:10,20:30]=domain.rho[:10,20:30]*u[:10,20:30]
-#domain.rhov[:10,20:30]=domain.rho[:10,20:30]*v[:10,20:30]
-#domain.rhoE[:10,20:30]=domain.rho[:10,20:30]*0.5*(u[:10,20:30]**2+v[:10,20:30]**2+2*domain.Cv*T[:10,20:30])
+#u[25:35,25:35]=0
+#v[25:35,25:35]=0
+#T[25:35,25:35]=600
+#p[25:35,25]=p[25:35,24]
+#p[25:35,35]=p[25:35,36]
+#p[35,25:35]=p[36,25:35]
+#p[25,25:35]=p[24,25:35]
+##p[1:9,21:29]=101325
+##
+#domain.rho[25:35,25:35]=p[25:35,25:35]/domain.R/T[25:35,25:35]
+#domain.rhou[25:35,25:35]=domain.rho[25:35,25:35]*u[25:35,25:35]
+#domain.rhov[25:35,25:35]=domain.rho[25:35,25:35]*v[25:35,25:35]
+#domain.rhoE[25:35,25:35]=domain.rho[25:35,25:35]*0.5*(u[25:35,25:35]**2+v[25:35,25:35]**2+2*domain.Cv*T[25:35,25:35])
     
 print '################################'
 ##########################################################################
@@ -289,15 +297,10 @@ datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(da
 isBinFile=False
 
 #output_file=FileClasses.FileOut('Output_'+datTime, isBinFile)
-input_file=FileClasses.FileOut('Input_'+datTime, isBinFile)
 
 # Write headers to files
-input_file.header('INPUT')
 #output_file.header('OUTPUT')
 
-# Write input file with settings
-input_file.input_writer(settings, BCs, domain.rho, domain.rhou, domain.rhov, domain.rhoE)
-input_file.close()
 print '################################'
 
 ##########################################################################
@@ -340,22 +343,22 @@ X,Y=domain.X,domain.Y
 #ax.set_zlabel('T (K)');
 #fig.savefig('Plot1.png',dpi=300)
 
-# 1D Plot
-fig2=pyplot.figure(figsize=(7,7))
-pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], T[:,int(settings['Nodes_x']/2)],marker='x')
-pyplot.xlabel('$y$ (m)')
-pyplot.ylabel('T (K)')
-pyplot.title('Temperature distribution')
-pyplot.xlim(0,3);
+# 1D Plot-Temperature distribution in y
+#fig2=pyplot.figure(figsize=(7,7))
+#pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], T[:,int(settings['Nodes_x']/2)],marker='x')
+#pyplot.xlabel('$y$ (m)')
+#pyplot.ylabel('T (K)')
+#pyplot.title('Temperature distribution')
+#pyplot.xlim(0,3);
 #fig2.savefig('Plot2.png',dpi=300)
 
-# 1D Plot
-fig3=pyplot.figure(figsize=(7,7))
-pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], p[:,int(settings['Nodes_x']/2)]-101325,marker='x')
-pyplot.xlabel('$y$ (m)')
-pyplot.ylabel('P (Pa gage)')
-pyplot.title('Pressure distribution')
-pyplot.xlim(0,3);
+# 1D Plot-Pressure distribution in y
+#fig3=pyplot.figure(figsize=(7,7))
+#pyplot.plot(domain.Y[:,int(settings['Nodes_x']/2)], p[:,int(settings['Nodes_x']/2)]-101325,marker='x')
+#pyplot.xlabel('$y$ (m)')
+#pyplot.ylabel('P (Pa gage)')
+#pyplot.title('Pressure distribution')
+#pyplot.xlim(0,3);
 #fig3.savefig('Plot2.png',dpi=300)
 
 # Velocity Quiver plot and pressure contour
@@ -371,12 +374,12 @@ pyplot.title('Velocity plot and Gage Pressure contours');
 #fig4.savefig(datTime+'_Vel_Press.png',dpi=300)
 
 # Temperature contour
-#fig5=pyplot.figure(figsize=(7, 7))
-#pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
-#pyplot.colorbar()
-#pyplot.xlabel('$x$ (m)')
-#pyplot.ylabel('$y$ (m)')
-#pyplot.title('Temperature distribution');
+fig5=pyplot.figure(figsize=(7, 7))
+pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
+pyplot.colorbar()
+pyplot.xlabel('$x$ (m)')
+pyplot.ylabel('$y$ (m)')
+pyplot.title('Temperature distribution');
 #fig5.savefig(datTime+'_Temp.png',dpi=300)
 
 # Density contour

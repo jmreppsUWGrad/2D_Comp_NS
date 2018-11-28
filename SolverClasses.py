@@ -18,6 +18,7 @@ Features:
     -Conservative Fourrier number correction based on smallest discretization
     -
 
+p/pt=(1+(gamma-1)/2*Ma**2)**(-gamma/(gamma-1))
 
 """
 
@@ -440,6 +441,8 @@ class TwoDimPlanarSolve():
             rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
             
         elif self.BCs['bc_type_left']=='inlet':
+            p[:,0]  =self.BCs['bc_left_p']
+#            pt      =self.BCs['bc_left_p']
             u[:,0]  =self.BCs['bc_left_u']
             v[:,0]  =self.BCs['bc_left_v']
             if (type(self.BCs['bc_left_T']) is str)\
@@ -448,55 +451,26 @@ class TwoDimPlanarSolve():
             else:
                 T[:,0]  =self.BCs['bc_left_T']
             
-            p[:,0]  =self.BCs['bc_left_p']
-#            rho[:,0]=p[:,0]/self.Domain.R/T[:,0]
+#            u[:,0]=numpy.sqrt(2*self.Domain.gamma*self.Domain.R*T[:,0]/(self.Domain.gamma-1)\
+#                 *((p[:,0]/pt)**(self.Domain.gamma/(self.Domain.gamma-1))-1))
+#            p[:,0]=pt*(1+(self.Domain.gamma-1)/2*u[:,0]/(self.Domain.gamma*self.Domain.R*T[:,0]))\
+#                 **((self.Domain.gamma-1)/self.Domain.gamma)
+
+#            p[:,0]=rho[:,0]*self.Domain.R*T[:,0]
             
             rhou[:,0]=rho[:,0]*u[:,0]
             rhov[:,0]=rho[:,0]*v[:,0]
-            rhoE[:,0]=rho[:,0]*\
-                (0.5*(u[:,0]**2+v[:,0]**2)+\
-                 self.Domain.Cv*T[:,0])
+#            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
+            rhoE[:,0]=rho[:,0]*(0.5*(u[:,0]**2+v[:,0]**2)+self.Domain.Cv*T[:,0])
                 
         elif self.BCs['bc_type_left']=='outlet':
             p[:,0]=self.BCs['bc_left_p']
-        
-#        elif self.BCs['bc_type_left']!='periodic':
-##            print 'Left: non-periodic'
-#            if (type(self.BCs['bc_left_rho']) is str)\
-#                and (self.BCs['bc_left_rho']=='zero_grad'):
-#                rho[:,0]=rho[:,1]
-#            else:
-#                rho[:,0]=self.BCs['bc_left_rho']
-#            if (type(self.BCs['bc_left_p']) is str)\
-#                and (self.BCs['bc_left_p']=='zero_grad'):
-#                p[:,0]  =p[:,1]
-#            else:
-#                p[:,0]  =self.BCs['bc_left_p']
-#            if (type(self.BCs['bc_left_u']) is str)\
-#                and (self.BCs['bc_left_u']=='zero_grad'):
-#                u[:,0]  =u[:,1]
-#            else:
-#                u[:,0]  =self.BCs['bc_left_u']
-#            if (type(self.BCs['bc_left_v']) is str)\
-#                and (self.BCs['bc_left_v']=='zero_grad'):
-#                v[:,0]  =v[:,1]
-#            else:
-#                v[:,0]  =self.BCs['bc_left_v']
-#            if (type(self.BCs['bc_left_T']) is str)\
-#                and (self.BCs['bc_left_T']=='zero_grad'):
-#                T[:,0]  =T[:,1]
-#            else:
-#                T[:,0]  =self.BCs['bc_left_T']
-#            
-#            rhou[:,0]=rho[:,0]*u[:,0]
-#            rhov[:,0]=rho[:,0]*v[:,0]
-#            rhoE[:,0]=rho[:,0]*\
-#                (0.5*(u[:,0]**2+v[:,0]**2)+\
-#                 self.Domain.Cv*T[:,0])
+            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_left_p']!=None:
             p[:,0]=self.BCs['bc_left_p']
+            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
         # Right face
         if self.BCs['bc_type_right']=='wall':
@@ -540,49 +514,16 @@ class TwoDimPlanarSolve():
             
             rhou[:,-1]=rho[:,-1]*u[:,-1]
             rhov[:,-1]=rho[:,-1]*v[:,-1]
-            rhoE[:,-1]=rho[:,-1]*\
-                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
-                 self.Domain.Cv*T[:,-1])
+#            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
+            rhoE[:,-1]=rho[:,-1]*(0.5*(u[:,-1]**2+v[:,-1]**2)+self.Domain.Cv*T[:,-1])
                 
         elif self.BCs['bc_type_right']=='outlet':
             p[:,-1]=self.BCs['bc_right_p']
+            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
         
-#        elif self.BCs['bc_type_right']!='periodic':
-##            print 'Right: non-periodic'
-#            if (type(self.BCs['bc_right_rho']) is str)\
-#                and (self.BCs['bc_right_rho']=='zero_grad'):
-#                rho[:,-1]=rho[:,-2]
-#            else:
-#                rho[:,-1]=self.BCs['bc_right_rho']
-#            if (type(self.BCs['bc_right_p']) is str)\
-#                and (self.BCs['bc_right_p']=='zero_grad'):
-#                p[:,-1]  =p[:,-2]  
-#            else:
-#                p[:,-1]  =self.BCs['bc_right_p']
-#            if (type(self.BCs['bc_right_u']) is str)\
-#                and (self.BCs['bc_right_u']=='zero_grad'):
-#                u[:,-1]  =u[:,-2]  
-#            else:
-#                u[:,-1]  =self.BCs['bc_right_u']
-#            if (type(self.BCs['bc_right_v']) is str)\
-#                and (self.BCs['bc_right_v']=='zero_grad'):
-#                v[:,-1]  =v[:,-2]  
-#            else:
-#                v[:,-1]  =self.BCs['bc_right_v']
-#            if (type(self.BCs['bc_right_T']) is str)\
-#                and (self.BCs['bc_right_T']=='zero_grad'):
-#                T[:,-1]  =T[:,-2]  
-#            else:
-#                T[:,-1]  =self.BCs['bc_right_T']
-#            
-#            rhou[:,-1]=rho[:,-1]*u[:,-1]
-#            rhov[:,-1]=rho[:,-1]*v[:,-1]
-#            rhoE[:,-1]=rho[:,-1]*\
-#                (0.5*(u[:,-1]**2+v[:,-1]**2)+\
-#                 self.Domain.Cv*T[:,-1])
-        # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_right_p']!=None:
             p[:,-1]=self.BCs['bc_right_p']
+            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
             
         # South face
         if self.BCs['bc_type_south']=='wall':
@@ -626,50 +567,17 @@ class TwoDimPlanarSolve():
             
             rhou[0,:]=rho[0,:]*u[0,:]
             rhov[0,:]=rho[0,:]*v[0,:]
-            rhoE[0,:]=rho[0,:]*\
-                (0.5*(u[0,:]**2+v[0,:]**2)+\
-                 self.Domain.Cv*T[0,:])
+#            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
+            rhoE[0,:]=rho[0,:]*(0.5*(u[0,:]**2+v[0,:]**2)+self.Domain.Cv*T[0,:])
                 
         elif self.BCs['bc_type_south']=='outlet':
             p[0,:]=self.BCs['bc_south_p']
-        
-#        elif self.BCs['bc_type_south']!='periodic':
-##            print 'South: non-periodic'
-#            if (type(self.BCs['bc_south_rho']) is str)\
-#                and (self.BCs['bc_south_rho']=='zero_grad'):
-#                rho[0,:]=rho[1,:]
-#            else:
-#                rho[0,:]=self.BCs['bc_south_rho']
-#            if (type(self.BCs['bc_south_p']) is str)\
-#                and (self.BCs['bc_south_p']=='zero_grad'):
-#                p[0,:]  =p[1,:]  
-#            else:
-#                p[0,:]  =self.BCs['bc_south_p']
-#            if (type(self.BCs['bc_south_u']) is str)\
-#                and (self.BCs['bc_south_u']=='zero_grad'):
-#                u[0,:]  =u[1,:]  
-#            else:
-#                u[0,:]  =self.BCs['bc_south_u']
-#            if (type(self.BCs['bc_south_v']) is str)\
-#                and (self.BCs['bc_south_v']=='zero_grad'):
-#                v[0,:]  =v[1,:]  
-#            else:
-#                v[0,:]  =self.BCs['bc_south_v']
-#            if (type(self.BCs['bc_south_T']) is str)\
-#                and (self.BCs['bc_south_T']=='zero_grad'):
-#                T[0,:]  =T[1,:]  
-#            else:
-#                T[0,:]  =self.BCs['bc_south_T']
-#
-#            rhou[0,:]=rho[0,:]*u[0,:]
-#            rhov[0,:]=rho[0,:]*v[0,:]
-#            rhoE[0,:]=rho[0,:]*\
-#                (0.5*(u[0,:]**2+v[0,:]**2)+\
-#                 self.Domain.Cv*T[0,:])                
+            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_south_p']!=None:
             p[0,:]=self.BCs['bc_south_p']
+            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
             
         # North face
         if self.BCs['bc_type_north']=='wall':
@@ -712,50 +620,17 @@ class TwoDimPlanarSolve():
             
             rhou[-1,:]=rho[-1,:]*u[-1,:]
             rhov[-1,:]=rho[-1,:]*v[-1,:]
-            rhoE[-1,:]=rho[-1,:]*\
-                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
-                 self.Domain.Cv*T[-1,:])
+#            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
+            rhoE[-1,:]=rho[-1,:]*(0.5*(u[-1,:]**2+v[-1,:]**2)+self.Domain.Cv*T[-1,:])
                 
         elif self.BCs['bc_type_north']=='outlet':
             p[-1,:]=self.BCs['bc_north_p']
-        
-#        elif self.BCs['bc_type_north']!='periodic':
-##            print 'North: non-periodic'
-#            if (type(self.BCs['bc_north_rho']) is str)\
-#                and (self.BCs['bc_north_rho']=='zero_grad'):
-#                rho[-1,:]=rho[-2,:]
-#            else:
-#                rho[-1,:]=self.BCs['bc_north_rho']
-#            if (type(self.BCs['bc_north_p']) is str)\
-#                and (self.BCs['bc_north_p']=='zero_grad'):
-#                p[-1,:]  =p[-2,:]  
-#            else:
-#                p[-1,:]  =self.BCs['bc_north_p']
-#            if (type(self.BCs['bc_north_u']) is str)\
-#                and (self.BCs['bc_north_u']=='zero_grad'):
-#                u[-1,:]  =u[-2,:]  
-#            else:
-#                u[-1,:]  =self.BCs['bc_north_u']
-#            if (type(self.BCs['bc_north_v']) is str)\
-#                and (self.BCs['bc_north_v']=='zero_grad'):
-#                v[-1,:]  =v[-2,:]  
-#            else:
-#                v[-1,:]  =self.BCs['bc_north_v']
-#            if (type(self.BCs['bc_north_T']) is str)\
-#                and (self.BCs['bc_north_T']=='zero_grad'):
-#                T[-1,:]  =T[-2,:]  
-#            else:
-#                T[-1,:]  =self.BCs['bc_north_T']
-#                
-#            rhou[-1,:]=rho[-1,:]*u[-1,:]
-#            rhov[-1,:]=rho[-1,:]*v[-1,:]
-#            rhoE[-1,:]=rho[-1,:]*\
-#                (0.5*(u[-1,:]**2+v[-1,:]**2)+\
-#                 self.Domain.Cv*T[-1,:])
+            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
         # Periodic boundary for Poiseuille flow        
         elif self.BCs['bc_north_p']!=None:
             p[-1,:]=self.BCs['bc_north_p']
+            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
     # Main compressible solver (1 time step)
     def Advance_Soln(self):
@@ -781,7 +656,7 @@ class TwoDimPlanarSolve():
             RK_info=temporal_schemes.runge_kutta(self.time_scheme)
             Nstep = RK_info.Nk
             if Nstep<0:
-                return 1 # Scheme not recognized; abort solver
+                return 1, -1 # Scheme not recognized; abort solver
             rk_coeff = RK_info.rk_coeff
             rk_substep_fraction = RK_info.rk_substep_fraction
 
@@ -852,17 +727,18 @@ class TwoDimPlanarSolve():
                 self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T, self.dx, self.dy)
                 
                 # Experiment-rectangular solid inside domain, border on south face
-#                u[:10,20:30]=0
-#                v[:10,20:30]=0
-#                T[:10,20:30]=600
-#                p[:10,20]=p[:10,19]
-#                p[:10,30]=p[:10,31]
-#                p[10,20:30]=p[11,20:30]
+#                u[25:35,25:35]=0
+#                v[25:35,25:35]=0
+#                T[25:35,25:35]=600
+#                p[25:35,25]=p[25:35,24]
+#                p[25:35,35]=p[25:35,36]
+#                p[35,25:35]=p[36,25:35]
+#                p[25,25:35]=p[24,25:35]
 #                
-#                rho_c[:10,20:30]=p[:10,20:30]/self.Domain.R/T[:10,20:30]
-#                rhou_c[:10,20:30]=rho_c[:10,20:30]*u[:10,20:30]
-#                rhov_c[:10,20:30]=rho_c[:10,20:30]*v[:10,20:30]
-#                rhoE_c[:10,20:30]=rho_c[:10,20:30]*0.5*(u[:10,20:30]**2+v[:10,20:30]**2+2*self.Domain.Cv*T[:10,20:30])
+#                rho_c[25:35,25:35]=p[25:35,25:35]/self.Domain.R/T[25:35,25:35]
+#                rhou_c[25:35,25:35]=rho_c[25:35,25:35]*u[25:35,25:35]
+#                rhov_c[25:35,25:35]=rho_c[25:35,25:35]*v[25:35,25:35]
+#                rhoE_c[25:35,25:35]=rho_c[25:35,25:35]*0.5*(u[25:35,25:35]**2+v[25:35,25:35]**2+2*self.Domain.Cv*T[25:35,25:35])
     
             ###################################################################
             # END OF TIME STEP CALCULATIONS

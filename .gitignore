@@ -2,3 +2,4 @@ git_maintain.bat
 *.pyc
 /Tests
 /memmett-PyWENO-224fe74
+Input_File.txt

@@ -121,12 +121,13 @@ BCs['bc_north_T']                   = 300
 ##########################################################################
 # ----------------------------------Libraries and classes
 ##########################################################################
-import numpy
+import numpy as np
 from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import datetime
 import os
-import CoolProp.CoolProp as CP
+#import sys
+#import CoolProp.CoolProp as CP
 
 #from GeomClasses import OneDimLine as OneDimLine
 from GeomClasses import TwoDimPlanar as TwoDimPlanar
@@ -142,122 +143,66 @@ import FileClasses
 #    north-largest y coordinate
 #    south-smallest y coordinate
 ##########################################################################
-settings={} # Dictionary of problem settings
-BCs={} # Dictionary of boundary conditions
-# Geometry details
-settings['Length']                  = 3.0
-settings['Width']                   = 3.0
-settings['Nodes_x']                 = 60
-settings['Nodes_y']                 = 60
-settings['Fluid']                   = 'Air'
-#CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid'])
-settings['k']                       = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
-settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
-settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
-settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])#0.02
-settings['Gravity_x']               = 0
-settings['Gravity_y']               = -9.81
-
-# Meshing details
-"""
-Biasing options:
-    -'OneWayUp'   for linearly increasing element sizes with increasing x/y
-    -'OneWayDown' for linearly decreasing element sizes with increasing x/y
-    -'TwoWayEnd'  for linearly increasing sizes till middle, then decrease again
-    -'TwoWayMid'  for linearly decreasing sizes till middle, then increase again
-    -size         is the smallest element size based on above selection
-"""
-settings['bias_type_x']             = None
-settings['bias_size_x']             = 0.005 # Smallest element size
-settings['bias_type_y']             = None
-settings['bias_size_y']             = 0.0005 # Smallest element size
-
-# Boundary conditions
-"""
-Options:
-    -'periodic': no properties need to be specified; implied on opposite face too
-    -'periodic': [IN PROGRESS] specify pressure, is poiseuille flow
-    -'wall': specify T, ('grad',[value]) or 'zero_grad'; no slip and dp=0 enforced implicitly
-    -'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
-    -'outlet': specify pressure; rest is calculated from interior points
-    -'inlet': [IN PROGRESS] specify velocities, temperature and pressure
-Profiles possible; must be same size as number of nodes on that boundary
-'zero_grad' assumes 0 gradient of that variable (temperature so far)
-('grad',[value]) enforces a gradient normal to boundary (temperature on walls)
-"""
-BCs['bc_type_left']                 = 'outlet'
-BCs['bc_left_u']                    = None
-BCs['bc_left_v']                    = None
-BCs['bc_left_p']                    = 101325
-BCs['bc_left_T']                    = None
-# numpy.linspace(400, 900, settings['Nodes_y'])
-BCs['bc_type_right']                = 'outlet'
-BCs['bc_right_u']                   = None
-BCs['bc_right_v']                   = None
-BCs['bc_right_p']                   = 101325
-BCs['bc_right_T']                   = None
-# numpy.linspace(400, 900, settings['Nodes_y'])
-BCs['bc_type_south']                = 'slip_wall'
-BCs['bc_south_u']                   = None
-BCs['bc_south_v']                   = None
-BCs['bc_south_p']                   = None
-BCs['bc_south_T']                   = 600
-# numpy.linspace(400, 900, settings['Nodes_x'])
-BCs['bc_type_north']                = 'slip_wall'
-BCs['bc_north_u']                   = None
-BCs['bc_north_v']                   = None
-BCs['bc_north_p']                   = None
-BCs['bc_north_T']                   = 300
-# numpy.linspace(400, 900, settings['Nodes_x'])
-
-# Time advancement
-settings['CFL']                     = 0.9
-settings['total_time_steps']        = 1
-settings['total_time']              = 3.0
-settings['Time_Scheme']             = 'RK4'
+print('######################################################')
+print('#       2D Compressible Navier-Stokes Solver         #')
+print('#              Created by J. Mark Epps               #')
+print('#          Part of Masters Thesis at UW 2018-2020    #')
+print('######################################################\n')
 
 ##########################################################################
 # -------------------------------------Read input file
 ##########################################################################
-del settings, BCs
+print 'Reading input file...'
 settings={}
 BCs={}
 fin=FileClasses.FileIn('Input_File', 0)
 fin.Read_Input(settings, BCs)
+os.chdir(settings['Output_directory'])
+datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(datetime.now()))
+
+print '################################'
 
 # Initial conditions from previous run/already in memory
 Use_inital_values                   = False
 
-print('######################################################')
-print('#              2D Navier-Stokes Solver               #')
-print('#              Created by J. Mark Epps               #')
-print('#          Part of Masters Thesis at UW 2018-2020    #')
-print('######################################################\n')
+##########################################################################
+# -------------------------------------Initialize solver and domain
+##########################################################################
+
 print 'Initializing geometry package...'
+# Calculate fluid properties based on fluid from input file [IN PROGRESS]
+#try:
+#    settings['k'] = CP.PropsSI('L','T', 300, 'P', 101325, settings['Fluid']) # If using constant value
+#except:
+#    print 'Fluid is not in CoolProp library'
+#    print 'Check input file'
+#    print '#################### Solver aborted #######################'
+#    sys.exit()
+#settings['gamma']                   = CP.PropsSI('Cpmass','T',300,'P',101325,settings['Fluid'])/CP.PropsSI('Cvmass','T',300,'P',101325,settings['Fluid'])
+#settings['R']                       = CP.PropsSI('gas_constant','Air')/CP.PropsSI('M',settings['Fluid']) # Specific to fluid
+#settings['mu']                      = CP.PropsSI('V','T', 300, 'P', 101325, settings['Fluid'])#0.02
+
 #domain=OneDimLine(L,Nx)
 domain=TwoDimPlanar(settings)
 domain.mesh()
 print '################################'
-
-##########################################################################
-# -------------------------------------Initialize solver and domain
-##########################################################################
 
 print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 print '################################'
 print 'Initializing domain...'
 if not Use_inital_values:
-    T=numpy.zeros((domain.Ny,domain.Nx))
-    u=numpy.zeros((domain.Ny,domain.Nx))
-    v=numpy.zeros((domain.Ny,domain.Nx))
-    p=numpy.zeros((domain.Ny,domain.Nx))
+    T=np.zeros((domain.Ny,domain.Nx))
+    u=np.zeros((domain.Ny,domain.Nx))
+    v=np.zeros((domain.Ny,domain.Nx))
+    p=np.zeros((domain.Ny,domain.Nx))
     
     u[:,:]=0
     v[:,:]=0
     
     #domain.rho[:,:]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
     T[:,:]=300
+#    T[25:35,25:35]=600
     p[:,:]=101325
 #    p[:,:int(settings['Nodes_x']/2)]=101325
 #    p[:,int(settings['Nodes_x']/2):]=3*101325
@@ -286,42 +231,53 @@ solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
 #domain.rhou[25:35,25:35]=domain.rho[25:35,25:35]*u[25:35,25:35]
 #domain.rhov[25:35,25:35]=domain.rho[25:35,25:35]*v[25:35,25:35]
 #domain.rhoE[25:35,25:35]=domain.rho[25:35,25:35]*0.5*(u[25:35,25:35]**2+v[25:35,25:35]**2+2*domain.Cv*T[25:35,25:35])
-    
-print '################################'
-##########################################################################
-# -------------------------------------File setups
-##########################################################################
-print 'Initializing files...'
-os.chdir('Tests')
-datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(datetime.now()))
-isBinFile=False
 
-#output_file=FileClasses.FileOut('Output_'+datTime, isBinFile)
-
-# Write headers to files
-#output_file.header('OUTPUT')
+# save initial values for first data files
+print 'Saving data to numpy array files...'
+np.save('rho_'+'0.000000', domain.rho, False)
+np.save('rhou_'+'0.000000', domain.rhou, False)
+np.save('rhov_'+'0.000000', domain.rhov, False)
+np.save('rhoE_'+'0.000000', domain.rhoE, False)
+np.save('X', domain.X, False)
+np.save('Y', domain.Y, False)
 
 print '################################'
-
 ##########################################################################
 # -------------------------------------Solve
 ##########################################################################
 print 'Solving:'
 t,nt=0,0
+output_data_t,output_data_nt=0,0
 if settings['total_time_steps']==None:
     settings['total_time_steps']=settings['total_time']*10**9
-if settings['total_time']==None:
+    output_data_t=settings['total_time']/settings['Number_Data_Output']
+elif settings['total_time']==None:
     settings['total_time']=settings['total_time_steps']
+    output_data_nt=int(settings['total_time_steps']/settings['Number_Data_Output'])
 
 while nt<settings['total_time_steps'] and t<settings['total_time']:
 #for nt in range(settings['total_time_steps']):
-    print 'Time step %i, Time elapsed=%f'%(nt+1,t)
     err,dt=solver.Advance_Soln()
+    print 'Time step %i, Step size=%.6f, Time elapsed=%f;'%(nt+1,dt, t)
     if err==1:
         print '#################### Solver aborted #######################'
         break
+    
     t+=dt
     nt+=1
+    # Output data to numpy files
+    if output_data_nt!=0 and nt%output_data_nt==0:
+        print 'Saving data to numpy array files...'
+        np.save('rho_'+'{:f}'.format(t), domain.rho, False)
+        np.save('rhou_'+'{:f}'.format(t), domain.rhou, False)
+        np.save('rhov_'+'{:f}'.format(t), domain.rhov, False)
+        np.save('rhoE_'+'{:f}'.format(t), domain.rhoE, False)
+    if (output_data_t!=0) and ((t-dt)%output_data_t > t%output_data_t):
+        print 'Saving data to numpy array files...'
+        np.save('rho_'+'{:f}'.format(t), domain.rho, False)
+        np.save('rhou_'+'{:f}'.format(t), domain.rhou, False)
+        np.save('rhov_'+'{:f}'.format(t), domain.rhov, False)
+        np.save('rhoE_'+'{:f}'.format(t), domain.rhoE, False)
     
 #output_file.close()
 
@@ -375,11 +331,13 @@ pyplot.title('Velocity plot and Gage Pressure contours');
 
 # Temperature contour
 fig5=pyplot.figure(figsize=(7, 7))
+pyplot.quiver(X[::pl, ::pl], Y[::pl, ::pl], \
+              u[::pl, ::pl], v[::pl, ::pl]) 
 pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
 pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
-pyplot.title('Temperature distribution');
+pyplot.title('Velocity plot and Temperature distribution t=%f'%t);
 #fig5.savefig(datTime+'_Temp.png',dpi=300)
 
 # Density contour

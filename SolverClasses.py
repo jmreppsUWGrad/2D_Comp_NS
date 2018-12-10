@@ -386,9 +386,15 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_left']=='outlet':
             qx[:,0] =qx[:,1]
             qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        elif (type(self.BCs['bc_left_T']) is tuple) and (self.BCs['bc_left_T'][1]==0):
+            qx[:,0] =0
+            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
         elif self.BCs['bc_type_right']=='outlet':
             qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
             qx[:,-1]=qx[:,-2]
+        elif (type(self.BCs['bc_right_T']) is tuple) and (self.BCs['bc_right_T'][1]==0):
+            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
+            qx[:,-1]=0
         else:
             qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
             qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
@@ -399,8 +405,14 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_north']=='outlet':
             qy[-1,:]=qy[-2,:]
             qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
+        elif (type(self.BCs['bc_north_T']) is tuple) and (self.BCs['bc_north_T'][1]==0):
+            qy[-1,:]=0
+            qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
         elif self.BCs['bc_type_south']=='outlet':
             qy[0,:] =qy[1,:]
+            qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
+        elif (type(self.BCs['bc_south_T']) is tuple) and (self.BCs['bc_south_T'][1]==0):
+            qy[0,:] =0
             qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
         else:
             qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
@@ -417,10 +429,7 @@ class TwoDimPlanarSolve():
             p[:,0]  =p[:,1]
             rhou[:,0]  =0
             rhov[:,0]  =0
-            if (type(self.BCs['bc_left_T']) is str)\
-                and (self.BCs['bc_left_T']=='zero_grad'):
-                T[:,0]  =T[:,1]
-            elif type(self.BCs['bc_left_T']) is tuple:
+            if type(self.BCs['bc_left_T']) is tuple:
                 T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
             else:
                 T[:,0]  =self.BCs['bc_left_T']
@@ -430,24 +439,20 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_left']=='slip_wall':
             rhou[:,0]  =0
             p[:,0]  =p[:,1]
-            if (type(self.BCs['bc_left_T']) is str)\
-                and (self.BCs['bc_left_T']=='zero_grad'):
-                T[:,0]  =T[:,1]
-            elif type(self.BCs['bc_left_T']) is tuple:
+            if type(self.BCs['bc_left_T']) is tuple:
                 T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
             else:
                 T[:,0]  =self.BCs['bc_left_T']
             rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
-            rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
+            rhoE[:,0]=rho[:,0]*(0.5*(v[:,0]**2)+self.Domain.Cv*T[:,0])
             
         elif self.BCs['bc_type_left']=='inlet':
             p[:,0]  =self.BCs['bc_left_p']
 #            pt      =self.BCs['bc_left_p']
             u[:,0]  =self.BCs['bc_left_u']
             v[:,0]  =self.BCs['bc_left_v']
-            if (type(self.BCs['bc_left_T']) is str)\
-                and (self.BCs['bc_left_T']=='zero_grad'):
-                T[:,0]  =T[:,1]
+            if type(self.BCs['bc_left_T']) is tuple:
+                T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
             else:
                 T[:,0]  =self.BCs['bc_left_T']
             
@@ -478,10 +483,7 @@ class TwoDimPlanarSolve():
             p[:,-1]  =p[:,-2]
             rhou[:,-1]  =0
             rhov[:,-1]  =0
-            if (type(self.BCs['bc_right_T']) is str)\
-                and (self.BCs['bc_right_T']=='zero_grad'):
-                T[:,-1]  =T[:,-2]
-            elif type(self.BCs['bc_right_T']) is tuple:
+            if type(self.BCs['bc_right_T']) is tuple:
                 T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
             else:
                 T[:,-1]  =self.BCs['bc_right_T']
@@ -491,22 +493,18 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_right']=='slip_wall':
             p[:,-1]  =p[:,-2]
             rhou[:,-1]  =0
-            if (type(self.BCs['bc_right_T']) is str)\
-                and (self.BCs['bc_right_T']=='zero_grad'):
-                T[:,-1]  =T[:,-2]
-            elif type(self.BCs['bc_right_T']) is tuple:
+            if type(self.BCs['bc_right_T']) is tuple:
                 T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
             else:
                 T[:,-1]  =self.BCs['bc_right_T']
             rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
-            rhoE[:,-1]=rho[:,-1]*self.Domain.Cv*T[:,-1]
+            rhoE[:,-1]=rho[:,-1]*(0.5*(v[:,-1]**2)+self.Domain.Cv*T[:,-1])
         
         elif self.BCs['bc_type_right']=='inlet':
             u[:,-1]  =self.BCs['bc_right_u']
             v[:,-1]  =self.BCs['bc_right_v']
-            if (type(self.BCs['bc_right_T']) is str)\
-                and (self.BCs['bc_right_T']=='zero_grad'):
-                T[:,-1]  =T[:,-2]
+            if type(self.BCs['bc_right_T']) is tuple:
+                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
             else:
                 T[:,-1]  =self.BCs['bc_right_T']
             p[:,-1]  =self.BCs['bc_right_p']
@@ -531,35 +529,29 @@ class TwoDimPlanarSolve():
             p[0,:]  =p[1,:]
             rhou[0,:]  =0
             rhov[0,:]  =0
-            if (type(self.BCs['bc_south_T']) is str)\
-                and (self.BCs['bc_south_T']=='zero_grad'):
-                T[0,:]  =T[1,:]
-            elif type(self.BCs['bc_south_T']) is tuple:
+            if type(self.BCs['bc_south_T']) is tuple:
                 T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
             else:
                 T[0,:]  =self.BCs['bc_south_T']
             rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
-            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
+#            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
+            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)
             
         elif self.BCs['bc_type_south']=='slip_wall':
             p[0,:]  =p[1,:]
             rhov[0,:]  =0
-            if (type(self.BCs['bc_south_T']) is str)\
-                and (self.BCs['bc_south_T']=='zero_grad'):
-                T[0,:]  =T[1,:]
-            elif type(self.BCs['bc_south_T']) is tuple:
+            if type(self.BCs['bc_south_T']) is tuple:
                 T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
             else:
                 T[0,:]  =self.BCs['bc_south_T']
             rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
-            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
+            rhoE[0,:]=rho[0,:]*(0.5*(u[0,:]**2)+self.Domain.Cv*T[0,:])
         
         elif self.BCs['bc_type_south']=='inlet':
             u[0,:]  =self.BCs['bc_south_u']
             v[0,:]  =self.BCs['bc_south_v']
-            if (type(self.BCs['bc_south_T']) is str)\
-                and (self.BCs['bc_south_T']=='zero_grad'):
-                T[0,:]  =T[1,:]
+            if type(self.BCs['bc_south_T']) is tuple:
+                T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
             else:
                 T[0,:]  =self.BCs['bc_south_T']
             p[0,:]  =self.BCs['bc_south_p']
@@ -585,34 +577,29 @@ class TwoDimPlanarSolve():
             p[-1,:]  =p[-2,:]
             rhou[-1,:]  =0
             rhov[-1,:]  =0
-            if (type(self.BCs['bc_north_T']) is str)\
-                and (self.BCs['bc_north_T']=='zero_grad'):
-                T[-1,:]  =T[-2,:]
-            elif type(self.BCs['bc_north_T']) is tuple:
+            if type(self.BCs['bc_north_T']) is tuple:
                 T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
             else:
                 T[-1,:]  =self.BCs['bc_north_T']
             rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
-            rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
+#            rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
+            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)
             
         elif self.BCs['bc_type_north']=='slip_wall':
             p[-1,:]  =p[-2,:]
             rhov[-1,:]  =0
-            if (type(self.BCs['bc_north_T']) is str)\
-                and (self.BCs['bc_north_T']=='zero_grad'):
-                T[-1,:]  =T[-2,:]
-            elif type(self.BCs['bc_north_T']) is tuple:
+            if type(self.BCs['bc_north_T']) is tuple:
                 T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
             else:
                 T[-1,:]  =self.BCs['bc_north_T']
             rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
+            rhoE[-1,:]=rho[-1,:]*(0.5*(u[-1,:]**2)+self.Domain.Cv*T[-1,:])
         
         elif self.BCs['bc_type_north']=='inlet':
             u[-1,:]  =self.BCs['bc_north_u']
             v[-1,:]  =self.BCs['bc_north_v']
-            if (type(self.BCs['bc_north_T']) is str)\
-                and (self.BCs['bc_north_T']=='zero_grad'):
-                T[-1,:]  =T[-2,:]
+            if type(self.BCs['bc_north_T']) is tuple:
+                T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
             else:
                 T[-1,:]  =self.BCs['bc_north_T']
             p[-1,:]  =self.BCs['bc_north_p']
@@ -668,10 +655,10 @@ class TwoDimPlanarSolve():
         u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
         dt=self.getdt(T)
         if (numpy.isnan(dt)) or (dt<=0):
-            print 'Time step size: %f'%dt
+#            print '    Time step size: %f'%dt
             print '*********Diverging time step***********'
             return 1, dt
-        print 'Time step size: %.6f'%dt
+#        print '    Time step size: %.6f'%dt
         
         for step in range(Nstep):
             ###################################################################
@@ -776,10 +763,10 @@ class TwoDimPlanarSolve():
         # Divergence check
         ###################################################################
         
-        if (numpy.isnan(numpy.amax(self.Domain.rho))) or \
+        if (numpy.amin(self.Domain.rho)<=0) or \
             (numpy.isnan(numpy.amax(self.Domain.rhou))) or \
             (numpy.isnan(numpy.amax(self.Domain.rhov))) or \
-            (numpy.isnan(numpy.amax(self.Domain.rhoE))):
+            (numpy.amax(self.Domain.rhoE)<=0):
             print '**************Divergence detected****************'
             return 1, dt
         

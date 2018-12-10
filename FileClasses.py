@@ -14,7 +14,8 @@ import string as st
 # Global declarations of data stored in files
 keys_Settings=['Length','Width','Nodes_x','Nodes_y','Fluid','k','gamma','R','mu',\
                'Gravity_x','Gravity_y', 'bias_type_x', 'bias_size_x','bias_type_y','bias_size_y']
-keys_Time_adv=['CFL','total_time_steps', 'total_time', 'Time_Scheme']
+keys_Time_adv=['CFL','total_time_steps', 'total_time', 'Time_Scheme','Number_Data_Output',\
+               'Output_directory']
 keys_BCs=     ['bc_type_left', 'bc_left_u', 'bc_left_v', 'bc_left_p', 'bc_left_T',\
               'bc_type_right','bc_right_u','bc_right_v','bc_right_p','bc_right_T',\
               'bc_type_south','bc_south_u','bc_south_v','bc_south_p','bc_south_T',\
@@ -124,7 +125,7 @@ class FileIn():
                 elif line[0] in keys_Time_adv:
                     if line[0]=='Time_Scheme':
                         settings[line[0]]=st.split(line[1], '\n')[0]
-                    elif line[0]=='total_time_steps':
+                    elif line[0]=='total_time_steps' or line[0]=='Number_Data_Output':
                         if line[1]=='None\n':
                             settings[line[0]]=None
                         else:
@@ -134,6 +135,8 @@ class FileIn():
                             settings[line[0]]=None
                         else:
                             settings[line[0]]=float(line[1])
+                    elif line[0]=='Output_directory':
+                        settings[line[0]]=line[1]+':'+st.split(line[2], '\n')[0]
                     else:
                         settings[line[0]]=float(line[1])
                         
@@ -144,7 +147,13 @@ class FileIn():
                     elif line[1]=='None\n':
                         BCs[line[0]]=None
                     else:
-                        BCs[line[0]]=float(line[1])
+                        try:
+                            # Number for BC
+                            BCs[line[0]]=float(line[1])
+                        except:
+                            # Grad tuple
+                            BCs[line[0]]=(st.split(line[1],',')[0],float(st.split(line[1],',')[1]))
+#                            BCs[line[0]]=st.split(line[1], '\n')[0]
                             
         self.fin.close()
         

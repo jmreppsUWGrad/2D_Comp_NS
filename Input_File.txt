@@ -1,0 +1,92 @@
+######################################################
+#       2D Compressible Navier-Stokes Solver         #
+#              Created by J. Mark Epps               #
+#          Part of Masters Thesis at UW 2018-2020    #
+######################################################
+
+############### INPUT FILE #########################
+#    Reference directions:
+#    left-smallest x coordinate
+#    right-largest x value
+#    north-largest y coordinate
+#    south-smallest y coordinate
+
+######################################################
+#			Settings
+#	Rectangular domain
+#	Fluid must be in CoolProp library to calculate k, gamma, R and mu [IN PROGRESS]
+######################################################
+
+Length:3.0
+Width:3.0
+Nodes_x:125
+Nodes_y:125
+Fluid:Air
+k:0.0263844657098
+gamma:1.40169049091
+R:287.049126788
+mu:1.8537340509e-05
+Gravity_x:0
+Gravity_y:-9.81
+
+######################################################
+#			Meshing details
+#	Currently not available
+######################################################
+
+bias_type_x:None
+bias_size_x:0.005
+bias_type_y:None
+bias_size_y:0.0005
+
+######################################################
+#			Time advancement details
+#	CFL in (0, 1.0)
+#	'total_time_steps' OR 'total_time' must be specified
+#	Time schemes: Euler, RK2, RK3, RK4, RK4_CLASSICAL, RK4_LOW, RK6, RK8
+#	Number_Data_Output: Number of conservative variable files to be output over the time/number of steps specified
+######################################################
+
+CFL:0.9
+total_time_steps:None
+total_time:0.1
+Time_Scheme:RK4
+Number_Data_Output:1
+Output_directory:C:\Users\Joseph\Documents\School\Research\2D_Comp_NS\Tests
+
+######################################################
+#			Boundary conditions
+#	'periodic': no properties need to be specified
+#	'periodic': specify pressure, is poiseuille flow
+#	'wall': specify T, ('grad',[value]); no slip and dp=0 enforced implicitly
+#	'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
+#	'outlet': specify pressure; rest is calculated from interior points
+#	'inlet': [IN PROGRESS] specify velocities, temperature and pressure
+#  [IN PROGRESS] Profiles possible; must be same size as number of nodes on that boundary
+# grad,[value] enforces a gradient normal to boundary (heat flux on walls); applied to q_i term in N-S
+######################################################
+
+bc_type_left:wall
+bc_left_u:None
+bc_left_v:None
+bc_left_p:101325
+bc_left_T:300
+
+bc_type_right:wall
+bc_right_u:None
+bc_right_v:None
+bc_right_p:101325
+bc_right_T:600
+
+bc_type_south:wall
+bc_south_u:None
+bc_south_v:None
+bc_south_p:101325
+bc_south_T:grad,0
+
+bc_type_north:wall
+bc_north_u:None
+bc_north_v:None
+bc_north_p:101325
+bc_north_T:grad,0
+

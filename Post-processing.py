@@ -28,7 +28,7 @@ Desired:
 """
 
 import numpy as np
-import CoolProp.CoolProp as CP
+#import CoolProp.CoolProp as CP
 import os
 import sys
 import string as st
@@ -247,8 +247,7 @@ while usr_inp!='exit':
     pyplot.ylabel('$y$ (m)')
     pyplot.title('Velocity plot and Temperature contours');
     pyplot.show()
-#    fig3.canvas.draw_idle()
-    ##fig3.savefig(datTime+'_Vel_Press.png',dpi=300)
+#    fig3.savefig('%.6f_Vel_Temp.png'%time0,dpi=300)
     # 
     ## Temperature contour
     #fig4=pyplot.figure(figsize=(7, 7))

@@ -113,39 +113,35 @@ class FileIn():
             if st.find(line, ':')>0 and st.find(line, '#')!=0:
                 line=st.split(line, ':')
                 if line[0] in keys_Settings:
-                    if line[0]=='Fluid':
+                    if line[0]=='Fluid' or line[1]=='None\n':
+                        # String handler
                         settings[line[0]]=st.split(line[1], '\n')[0]
                     elif line[0]=='Nodes_x' or line[0]=='Nodes_y':
+                        # Integer values
                         settings[line[0]]=int(line[1])
-                    elif line[1]=='None\n':
-                        settings[line[0]]=None
                     else:
+                        # Float values
                         settings[line[0]]=float(line[1])
                         
                 elif line[0] in keys_Time_adv:
-                    if line[0]=='Time_Scheme':
+                    if line[0]=='Time_Scheme' or line[1]=='None\n':
+                        # String handler
                         settings[line[0]]=st.split(line[1], '\n')[0]
                     elif line[0]=='total_time_steps' or line[0]=='Number_Data_Output':
-                        if line[1]=='None\n':
-                            settings[line[0]]=None
-                        else:
-                            settings[line[0]]=int(line[1])
-                    elif line[0]=='total_time':
-                        if line[1]=='None\n':
-                            settings[line[0]]=None
-                        else:
-                            settings[line[0]]=float(line[1])
+                        settings[line[0]]=int(line[1])
                     elif line[0]=='Output_directory':
+                        # String handler for directory
                         settings[line[0]]=line[1]+':'+st.split(line[2], '\n')[0]
                     else:
+                        # Float values
                         settings[line[0]]=float(line[1])
                         
                 elif line[0] in keys_BCs:
                     if line[0]=='bc_type_left' or line[0]=='bc_type_right'\
-                        or line[0]=='bc_type_south' or line[0]=='bc_type_north':
+                        or line[0]=='bc_type_south' or line[0]=='bc_type_north'\
+                        or line[1]=='None\n':
+                        # String handler
                         BCs[line[0]]=st.split(line[1], '\n')[0]
-                    elif line[1]=='None\n':
-                        BCs[line[0]]=None
                     else:
                         try:
                             # Number for BC

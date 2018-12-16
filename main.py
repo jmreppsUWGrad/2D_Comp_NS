@@ -248,10 +248,10 @@ print '################################'
 print 'Solving:'
 t,nt=0,0
 output_data_t,output_data_nt=0,0
-if settings['total_time_steps']==None:
+if settings['total_time_steps']=='None':
     settings['total_time_steps']=settings['total_time']*10**9
     output_data_t=settings['total_time']/settings['Number_Data_Output']
-elif settings['total_time']==None:
+elif settings['total_time']=='None':
     settings['total_time']=settings['total_time_steps']
     output_data_nt=int(settings['total_time_steps']/settings['Number_Data_Output'])
 

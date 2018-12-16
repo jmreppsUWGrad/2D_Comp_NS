@@ -28,51 +28,6 @@ import numpy
 #import CoolProp.CoolProp as CP
 import temporal_schemes
 
-# 1D Solvers (CURRENTLY ONLY FOR CONDUCTION)
-class OneDimSolve():
-    def __init__(self, geom, timeSize, timeSteps, conv):
-        self.Domain=geom # Geometry object
-        self.dt=timeSize
-        self.Nt=timeSteps
-        self.conv=conv
-        self.T=self.Domain.T
-        self.dx=self.Domain.dx
-        self.maxCount=1000
-        self.Fo=1.0*self.Domain.mat_prop['k']*self.dt\
-        /(self.Domain.mat_prop['rho']*self.Domain.mat_prop['Cp'])
-        self.BCs={'BCx1': ('T',600,(0,-1)),\
-                 'BCx2': ('T',300,(0,-1)),\
-                 'BCy1': ('T',600,(0,-1)),\
-                 'BCy2': ('T',300,(0,-1))\
-                 }
-    
-    # Convergence checker
-    def CheckConv(self, Tprev, Tnew):
-        diff=numpy.sum(numpy.abs(Tnew[:]-Tprev[:]))/numpy.sum(numpy.abs(Tprev[:]))
-        print(diff)
-        if diff<=self.conv:
-            return True
-        else:
-            return False
-    # Solve
-    def SolveExpTrans(self):
-        Tc=numpy.empty_like(self.T)
-        for i in range(self.Nt):
-            Tc=self.T.copy()
-            self.T[1:-1]=2*self.Fo/(self.dx[:-1]+self.dx[1:])*(Tc[:-2]/self.dx[:-1]+Tc[2:]/self.dx[1:])\
-            +(1-2*self.Fo/(self.dx[:-1]+self.dx[1:])*(1/self.dx[:-1]+1/self.dx[1:]))*Tc[1:-1]
-        
-    def SolveSS(self):
-        Tc=numpy.empty_like(self.T)
-        count=0
-        print 'Residuals:'
-        while count<self.maxCount:
-            Tc=self.T.copy()
-            self.T[1:-1]=(self.dx[1:]*Tc[:-2]+self.dx[:-1]*Tc[2:])\
-            /(self.dx[1:]+self.dx[:-1])
-            if self.CheckConv(Tc,self.T):
-                break
-
 # 2D solver
 class TwoDimPlanarSolve():
     def __init__(self, geom_obj, settings, BCs):
@@ -475,7 +430,7 @@ class TwoDimPlanarSolve():
             rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
         # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_left_p']!=None:
+        elif self.BCs['bc_left_p']!='None':
             p[:,0]=self.BCs['bc_left_p']
             rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
@@ -523,7 +478,7 @@ class TwoDimPlanarSolve():
             p[:,-1]=self.BCs['bc_right_p']
             rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
         
-        elif self.BCs['bc_right_p']!=None:
+        elif self.BCs['bc_right_p']!='None':
             p[:,-1]=self.BCs['bc_right_p']
             rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
             
@@ -572,7 +527,7 @@ class TwoDimPlanarSolve():
             rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
         
         # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_south_p']!=None:
+        elif self.BCs['bc_south_p']!='None':
             p[0,:]=self.BCs['bc_south_p']
             rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
             
@@ -621,7 +576,7 @@ class TwoDimPlanarSolve():
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
         # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_north_p']!=None:
+        elif self.BCs['bc_north_p']!='None':
             p[-1,:]=self.BCs['bc_north_p']
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         

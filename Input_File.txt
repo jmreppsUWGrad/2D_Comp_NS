@@ -52,7 +52,8 @@ total_time_steps:100
 total_time:None
 Time_Scheme:RK4
 Number_Data_Output:1
-Output_directory:C:\Users\mepps\Documents\Research\2D_compressible_NS\Tests
+#Output_directory:C:\Users\mepps\Documents\Research\2D_compressible_NS\Tests
+Output_directory:C:\Users\Joseph\Documents\School\Research\2D_Comp_NS\Tests
 
 ######################################################
 #			Boundary conditions

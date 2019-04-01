@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Sep 29 13:17:11 2018
-
-@author: Joseph
+######################################################
+#       2D Compressible Navier-Stokes Solver         #
+#              Created by J. Mark Epps               #
+#          Part of Masters Thesis at UW 2018-2020    #
+######################################################
 
 Solver classes for Compressible N-S equations. Takes in given object (geometry),
 time step and convergence information and alters the object's temperature, 
@@ -22,7 +24,7 @@ p/pt=(1+(gamma-1)/2*Ma**2)**(-gamma/(gamma-1))
 
 """
 
-import numpy
+import numpy as np
 #import GeomClasses
 #import MatClasses
 #import CoolProp.CoolProp as CP
@@ -38,67 +40,172 @@ class TwoDimPlanarSolve():
 #        self.conv=conv
         self.gx=settings['Gravity_x']
         self.gy=settings['Gravity_y']
-        self.dx,self.dy=numpy.meshgrid(geom_obj.dx,geom_obj.dy)
+        self.dx,self.dy=np.meshgrid(geom_obj.dx,geom_obj.dy)
         self.BCs=BCs
     
     # Time step check with dx, dy, T and CFL number
     def getdt(self, T):
-#        dx=numpy.sqrt(self.dx**2+self.dy**2)
+#        dx=np.sqrt(self.dx**2+self.dy**2)
         
-        dx=numpy.zeros_like(self.dx)
-        dx[1:-1,1:-1]=0.5*numpy.sqrt((self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])**2+\
+        dx=np.zeros_like(self.dx)
+        dx[1:-1,1:-1]=0.5*np.sqrt((self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])**2+\
                   (self.dy[1:-1,1:-1]+self.dy[:-2,1:-1])**2)
-        dx[0,0]      =0.5*numpy.sqrt((self.dx[0,0])**2+(self.dy[0,0])**2)
-        dx[0,1:-1]   =0.5*numpy.sqrt((self.dx[0,1:-1]+self.dx[0,:-2])**2+\
+        dx[0,0]      =0.5*np.sqrt((self.dx[0,0])**2+(self.dy[0,0])**2)
+        dx[0,1:-1]   =0.5*np.sqrt((self.dx[0,1:-1]+self.dx[0,:-2])**2+\
                   (self.dy[0,1:-1])**2)
-        dx[1:-1,0]   =0.5*numpy.sqrt((self.dx[1:-1,0])**2+\
+        dx[1:-1,0]   =0.5*np.sqrt((self.dx[1:-1,0])**2+\
                   (self.dy[1:-1,0]+self.dy[:-2,0])**2)
-        dx[0,-1]     =0.5*numpy.sqrt((self.dx[0,-1])**2+(self.dy[0,-1])**2)
-        dx[-1,0]     =0.5*numpy.sqrt((self.dx[-1,0])**2+(self.dy[-1,0])**2)
-        dx[-1,1:-1]  =0.5*numpy.sqrt((self.dx[-1,1:-1]+self.dx[-1,:-2])**2+\
+        dx[0,-1]     =0.5*np.sqrt((self.dx[0,-1])**2+(self.dy[0,-1])**2)
+        dx[-1,0]     =0.5*np.sqrt((self.dx[-1,0])**2+(self.dy[-1,0])**2)
+        dx[-1,1:-1]  =0.5*np.sqrt((self.dx[-1,1:-1]+self.dx[-1,:-2])**2+\
                   (self.dy[-1,1:-1])**2)
-        dx[1:-1,-1]  =0.5*numpy.sqrt((self.dx[1:-1,-1])**2+(self.dy[1:-1,-1]+\
+        dx[1:-1,-1]  =0.5*np.sqrt((self.dx[1:-1,-1])**2+(self.dy[1:-1,-1]+\
                   self.dy[:-2,-1])**2)
-        dx[-1,-1]    =0.5*numpy.sqrt((self.dx[-1,-1])**2+(self.dy[-1,-1])**2)
+        dx[-1,-1]    =0.5*np.sqrt((self.dx[-1,-1])**2+(self.dy[-1,-1])**2)
 #        print(dx)
-        c=numpy.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
+        c=np.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
 #        print(c)
-        return numpy.amin(self.CFL*dx/(c))
-
-    # Convergence checker (REMOVE? NO IMPLICIT CALCULATIONS DONE)
-    def CheckConv(self, Tprev, Tnew):
-        diff=numpy.sum(numpy.abs(Tnew[:]-Tprev[:]))/numpy.sum(numpy.abs(Tprev[:]))
-        print(diff)
-        if diff<=self.conv:
-            return True
+        return np.amin(self.CFL*dx/(c))
+    
+    # Interpolation function (become flux function?)
+    def interpolate(self, k1, k2, func):
+        if func=='Linear':
+            return 0.5*k1+0.5*k2
         else:
-            return False
+            return 2*k1*k2/(k1+k2)
+    
+    # coefficients for temperature/velocity weighting in Advance_Soln
+    def get_Coeff(self, dx, dy, k, inter_type):
+        aW=np.zeros_like(dx)
+        aE=np.zeros_like(dx)
+        aS=np.zeros_like(dx)
+        aN=np.zeros_like(dx)
+        
+        # Left/right face factors
+        aW[1:-1,1:-1] =0.5*self.interpolate(k[1:-1,1:-1], k[1:-1,:-2], inter_type)\
+                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,:-2])
+        aE[1:-1,1:-1] =0.5*self.interpolate(k[1:-1,1:-1],k[1:-1,2:], inter_type)\
+                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,1:-1])
+            # At north/south bondaries
+        aW[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[0,:-2], inter_type)\
+            *(dy[0,1:-1])/(dx[0,:-2])
+        aE[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[0,2:], inter_type)\
+            *(dy[0,1:-1])/(dx[0,1:-1])
+        aW[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-1,:-2], inter_type)\
+            *(dy[-1,1:-1])/(dx[-1,:-2])
+        aE[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-1,2:], inter_type)\
+            *(dy[-1,1:-1])/(dx[-1,1:-1])
+            # At east/west boundaries
+        aE[0,0]       =0.5*self.interpolate(k[0,0],k[0,1], inter_type)\
+            *(dy[0,0])/dx[0,0]
+        aE[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[1:-1,1], inter_type)\
+            *(dy[1:-1,0]+dy[:-2,0])/dx[1:-1,0]
+        aE[-1,0]      =0.5*self.interpolate(k[-1,0],k[-1,1], inter_type)\
+            *(dy[-1,0])/dx[-1,0]
+        aW[0,-1]      =0.5*self.interpolate(k[0,-1],k[0,-2], inter_type)\
+            *(dy[0,-1])/dx[0,-1]
+        aW[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[1:-1,-2], inter_type)\
+            *(dy[1:-1,-1]+dy[:-2,-1])/dx[1:-1,-1]
+        aW[-1,-1]     =0.5*self.interpolate(k[-1,-1],k[-1,-2], inter_type)\
+            *(dy[-1,-1])/dx[-1,-1]
+        
+        # Top/bottom faces
+        aS[1:-1,1:-1]=0.5*self.interpolate(k[1:-1,1:-1],k[:-2,1:-1], inter_type)\
+            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[:-2,1:-1]
+        aN[1:-1,1:-1]=0.5*self.interpolate(k[1:-1,1:-1],k[2:,1:-1], inter_type)\
+            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[1:-1,1:-1]
+        
+            # Area account for east/west boundary nodes
+        aS[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[:-2,0], inter_type)\
+            *(dx[1:-1,0])/(dy[:-2,0])
+        aN[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[2:,0], inter_type)\
+            *(dx[1:-1,0])/(dy[1:-1,0])
+        aS[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[:-2,-1], inter_type)\
+            *(dx[1:-1,-1])/(dy[:-2,-1])
+        aN[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[2:,-1], inter_type)\
+            *(dx[1:-1,-1])/(dy[1:-1,-1])
+            # Forward/backward difference for north/south boundaries
+        aN[0,0]       =0.5*self.interpolate(k[0,0],k[1,0], inter_type)\
+            *dx[0,0]/dy[0,0]
+        aN[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[1,1:-1], inter_type)\
+            *(dx[0,1:-1]+dx[0,:-2])/dy[0,1:-1]
+        aN[0,-1]      =0.5*self.interpolate(k[0,-1],k[1,-1], inter_type)\
+            *dx[0,-1]/dy[0,-1]
+        aS[-1,0]      =0.5*self.interpolate(k[-1,0],k[-2,0], inter_type)\
+            *dx[-1,0]/dy[-1,0]
+        aS[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-2,1:-1], inter_type)\
+            *(dx[0,1:-1]+dx[0,:-2])/dy[-1,1:-1]
+        aS[-1,-1]     =0.5*self.interpolate(k[-1,-1],k[-2,-1], inter_type)\
+            *dx[-1,-1]/dy[-1,-1]
+        
+        return aW,aE,aS,aN
+    
     # Flux of conservative variables
     # Calculates for entire domain and accounts for periodicity
-    # Can be hacked to solve gradients setting rho to 1.0 and u or v to zeros
+    # Can be hacked to solve gradients setting rho to variable and u or v to zeros
     def compute_Flux(self, rho, u, v, dx, dy):
-        ddx=numpy.empty_like(u)
-        ddy=numpy.empty_like(v)
-        rhou=rho*u
-        rhov=rho*v
-
-        ddx[:,1:-1]=(rhou[:,2:]-rhou[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
-        ddy[1:-1,:]=(rhov[2:,:]-rhov[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
+        ddx=np.zeros_like(u)
+        ddy=np.zeros_like(v)
+#        rhou=rho*u
+#        rhov=rho*v
         
-        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
-            ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
-            ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
-        else:
-            # Forward/backward differences for boundaries
-            ddx[:,0] =(rhou[:,1]-rhou[:,0])/(dx[:,0])
-            ddx[:,-1]=(rhou[:,-1]-rhou[:,-2])/(dx[:,-1])
-        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
-            ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
-            ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
-        else:
-            # Forward/backward differences for boundaries
-            ddy[0,:] =(rhov[1,:]-rhov[0,:])/(dy[0,:])
-            ddy[-1,:]=(rhov[-1,:]-rhov[-2,:])/(dy[-1,:])
+        # Flux across left/right faces
+        ddx[1:-1,1:] =0.5*(rho[1:-1,1:]+rho[1:-1,:-1])\
+                *0.5*(dy[1:-1,1:]+dy[:-2,1:])\
+                *0.5*(u[1:-1,1:]+u[1:-1,:-1])
+        ddx[1:-1,:-1]-=0.5*(rho[1:-1,:-1]+rho[1:-1,1:])\
+                *0.5*(dy[1:-1,:-1]+dy[:-2,:-1])\
+                *0.5*(u[1:-1,:-1]+u[1:-1,1:])
+            # North/south boundaries
+        ddx[0,1:]   =0.5*(rho[0,1:]+rho[0,:-1])\
+                *0.5*(dy[0,1:])\
+                *0.5*(u[0,1:]+u[0,:-1])
+        ddx[0,:-1] -=0.5*(rho[0,:-1]+rho[0,1:])\
+                *0.5*(dy[0,:-1])\
+                *0.5*(u[0,:-1]+u[0,1:])
+        ddx[-1,1:]  =0.5*(rho[-1,1:]+rho[1,:-1])\
+                *0.5*(dy[-1,1:])\
+                *0.5*(u[-1,1:]+u[-1,:-1])
+        ddx[-1,:-1]-=0.5*(rho[-1,:-1]+rho[1,1:])\
+                *0.5*(dy[-1,:-1])\
+                *0.5*(u[-1,:-1]+u[-1,1:])
+        
+        # Flux across top/bottom faces
+        ddy[1:,1:-1] =0.5*(rho[1:,1:-1]+rho[:-1,1:-1])\
+                *0.5*(dx[1:,1:-1]+dx[1:,:-2])\
+                *0.5*(v[1:,1:-1]+v[:-1,1:-1])
+        ddy[:-1,1:-1]-=0.5*(rho[:-1,1:-1]+rho[1:,1:-1])\
+                *0.5*(dx[:-1,1:-1]+dx[:-1,:-2])\
+                *0.5*(v[:-1,1:-1]+v[1:,1:-1])
+            # East/west boundaries
+        ddy[1:,0]  =0.5*(rho[1:,0]+rho[:-1,0])\
+                *0.5*(dx[1:,0])\
+                *0.5*(v[1:,0]+v[:-1,0])
+        ddy[:-1,0]-=0.5*(rho[:-1,0]+rho[1:,0])\
+                *0.5*(dx[:-1,0])\
+                *0.5*(v[:-1,0]+v[1:,0])
+        ddy[1:,-1]  =0.5*(rho[1:,-1]+rho[:-1,-1])\
+                *0.5*(dx[1:,-1])\
+                *0.5*(v[1:,-1]+v[:-1,-1])
+        ddy[:-1,-1]-=0.5*(rho[:-1,-1]+rho[1:,-1])\
+                *0.5*(dx[:-1,-1])\
+                *0.5*(v[:-1,-1]+v[1:,-1])
+        
+        
+#        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+#            ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
+#            ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
+#        else:
+#            # Forward/backward differences for boundaries
+#            ddx[:,0] =(rhou[:,1]-rhou[:,0])/(dx[:,0])
+#            ddx[:,-1]=(rhou[:,-1]-rhou[:,-2])/(dx[:,-1])
+#        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+#            ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
+#            ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
+#        else:
+#            # Forward/backward differences for boundaries
+#            ddy[0,:] =(rhov[1,:]-rhov[0,:])/(dy[0,:])
+#            ddy[-1,:]=(rhov[-1,:]-rhov[-2,:])/(dy[-1,:])
         
         return ddx+ddy
     
@@ -328,8 +435,8 @@ class TwoDimPlanarSolve():
     
     # Heat conduction gradient source term
     def Source_Cond(self, T, dx, dy):
-        qx=numpy.empty_like(T)
-        qy=numpy.empty_like(T)
+        qx=np.empty_like(T)
+        qy=np.empty_like(T)
         k=self.Domain.k
         # Central difference
         qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
@@ -413,7 +520,7 @@ class TwoDimPlanarSolve():
             else:
                 T[:,0]  =self.BCs['bc_left_T']
             
-#            u[:,0]=numpy.sqrt(2*self.Domain.gamma*self.Domain.R*T[:,0]/(self.Domain.gamma-1)\
+#            u[:,0]=np.sqrt(2*self.Domain.gamma*self.Domain.R*T[:,0]/(self.Domain.gamma-1)\
 #                 *((p[:,0]/pt)**(self.Domain.gamma/(self.Domain.gamma-1))-1))
 #            p[:,0]=pt*(1+(self.Domain.gamma-1)/2*u[:,0]/(self.Domain.gamma*self.Domain.R*T[:,0]))\
 #                 **((self.Domain.gamma-1)/self.Domain.gamma)
@@ -592,8 +699,8 @@ class TwoDimPlanarSolve():
         rhoE_c=rhoE_0.copy()
                 
         if self.time_scheme=='Euler':
-            rk_coeff = numpy.array([1,0])
-            rk_substep_fraction = numpy.array([1,0])
+            rk_coeff = np.array([1,0])
+            rk_substep_fraction = np.array([1,0])
             Nstep = 1
             drhodt =[0]*Nstep
             drhoudt=[0]*Nstep
@@ -615,7 +722,7 @@ class TwoDimPlanarSolve():
         
         u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
         dt=self.getdt(T)
-        if (numpy.isnan(dt)) or (dt<=0):
+        if (np.isnan(dt)) or (dt<=0):
 #            print '    Time step size: %f'%dt
             print '*********Diverging time step***********'
             return 1, dt
@@ -634,22 +741,22 @@ class TwoDimPlanarSolve():
             self.Calculate_Stress(u, v, self.dx, self.dy)
     
             # Density
-            drhodt[step] =-self.compute_Flux(rho_c, u, v, self.dx, self.dy)
+            drhodt[step] =self.compute_Flux(rho_c, u, v, self.dx, self.dy)
     
             # x-momentum (flux, pressure, shear stress, gravity)
-            drhoudt[step] =-self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
-            drhoudt[step]-=self.compute_Flux(1.0, p, numpy.zeros_like(v), self.dx, self.dy)
+            drhoudt[step] =self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
+            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), self.dx, self.dy)
             drhoudt[step]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
             drhoudt[step]+=rho_c*self.gx
     
             # y-momentum (flux, pressure, shear stress, gravity)
-            drhovdt[step] =-self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
-            drhovdt[step]-=self.compute_Flux(1.0, numpy.zeros_like(u), p, self.dx, self.dy)
+            drhovdt[step] =self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
+            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), self.dx, self.dy)
             drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
             drhovdt[step]+=rho_c*self.gy
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
-            drhoEdt[step] =-self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
+            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
             drhoEdt[step]-=self.compute_Flux(p, u, v, self.dx, self.dy)
             drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
@@ -724,10 +831,10 @@ class TwoDimPlanarSolve():
         # Divergence check
         ###################################################################
         
-        if (numpy.amin(self.Domain.rho)<=0) or \
-            (numpy.isnan(numpy.amax(self.Domain.rhou))) or \
-            (numpy.isnan(numpy.amax(self.Domain.rhov))) or \
-            (numpy.amax(self.Domain.rhoE)<=0):
+        if (np.amin(self.Domain.rho)<=0) or \
+            (np.isnan(np.amax(self.Domain.rhou))) or \
+            (np.isnan(np.amax(self.Domain.rhov))) or \
+            (np.amax(self.Domain.rhoE)<=0):
             print '**************Divergence detected****************'
             return 1, dt
         

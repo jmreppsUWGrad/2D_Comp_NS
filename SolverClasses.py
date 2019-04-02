@@ -82,43 +82,43 @@ class TwoDimPlanarSolve():
         aN=np.zeros_like(dx)
         
         # Left/right face factors
-        aW[1:-1,1:-1] =0.5*k*mult_fac\
+        aW[1:-1,1:-1] =0.5*k\
                     *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,:-2])
-        aE[1:-1,1:-1] =0.5*k*mult_fac\
+        aE[1:-1,1:-1] =0.5*k\
                     *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,1:-1])
             # At north/south bondaries
-        aW[0,1:-1]    =0.5*k*mult_fac\
+        aW[0,1:-1]    =0.5*k\
             *(dy[0,1:-1])/(dx[0,:-2])
-        aE[0,1:-1]    =0.5*k*mult_fac\
+        aE[0,1:-1]    =0.5*k\
             *(dy[0,1:-1])/(dx[0,1:-1])
-        aW[-1,1:-1]   =0.5*k*mult_fac\
+        aW[-1,1:-1]   =0.5*k\
             *(dy[-1,1:-1])/(dx[-1,:-2])
-        aE[-1,1:-1]   =0.5*k*mult_fac\
+        aE[-1,1:-1]   =0.5*k\
             *(dy[-1,1:-1])/(dx[-1,1:-1])
             # At east/west boundaries
-        aE[0,0]       =0.5*k*mult_fac\
+        aE[0,0]       =0.5*k\
             *(dy[0,0])/dx[0,0]
-        aE[1:-1,0]    =0.5*k*mult_fac\
+        aE[1:-1,0]    =0.5*k\
             *(dy[1:-1,0]+dy[:-2,0])/dx[1:-1,0]
-        aE[-1,0]      =0.5*k*mult_fac\
+        aE[-1,0]      =0.5*k\
             *(dy[-1,0])/dx[-1,0]
-        aW[0,-1]      =0.5*k*mult_fac\
+        aW[0,-1]      =0.5*k\
             *(dy[0,-1])/dx[0,-1]
-        aW[1:-1,-1]   =0.5*k*mult_fac\
+        aW[1:-1,-1]   =0.5*k\
             *(dy[1:-1,-1]+dy[:-2,-1])/dx[1:-1,-1]
-        aW[-1,-1]     =0.5*k*mult_fac\
+        aW[-1,-1]     =0.5*k\
             *(dy[-1,-1])/dx[-1,-1]
         
         # Top/bottom faces
-        aS[1:-1,1:-1]=0.5*k*mult_fac\
+        aS[1:-1,1:-1]=0.5*k\
             *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[:-2,1:-1]
-        aN[1:-1,1:-1]=0.5*k*mult_fac\
+        aN[1:-1,1:-1]=0.5*k\
             *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[1:-1,1:-1]
         
             # Area account for east/west boundary nodes
-        aS[1:-1,0]    =0.5*k*mult_fac\
+        aS[1:-1,0]    =0.5*k\
             *(dx[1:-1,0])/(dy[:-2,0])
-        aN[1:-1,0]    =0.5*k*mult_fac\
+        aN[1:-1,0]    =0.5*k\
             *(dx[1:-1,0])/(dy[1:-1,0])
         aS[1:-1,-1]   =0.5*k\
             *(dx[1:-1,-1])/(dy[:-2,-1])

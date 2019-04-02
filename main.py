@@ -135,6 +135,12 @@ from GeomClasses import TwoDimPlanar as TwoDimPlanar
 import SolverClasses as Solvers
 import FileClasses
 
+def save_data(domain, t):
+    np.save('rho_'+t, domain.rho, False)
+    np.save('rhou_'+t, domain.rhou, False)
+    np.save('rhov_'+t, domain.rhov, False)
+    np.save('rhoE_'+t, domain.rhoE, False)
+
 ##########################################################################
 # ------------------------------ Geometry, Domain and BCs Setup
 #    Reference directions:
@@ -191,6 +197,7 @@ print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 print '################################'
 print 'Initializing domain...'
+vol=domain.CV_vol()
 if not Use_inital_values:
     T=np.zeros((domain.Ny,domain.Nx))
     u=np.zeros((domain.Ny,domain.Nx))
@@ -234,10 +241,7 @@ solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
 
 # save initial values for first data files
 print 'Saving data to numpy array files...'
-np.save('rho_'+'0.000000', domain.rho, False)
-np.save('rhou_'+'0.000000', domain.rhou, False)
-np.save('rhov_'+'0.000000', domain.rhov, False)
-np.save('rhoE_'+'0.000000', domain.rhoE, False)
+save_data(domain, '0.000000')
 np.save('X', domain.X, False)
 np.save('Y', domain.Y, False)
 
@@ -251,33 +255,30 @@ output_data_t,output_data_nt=0,0
 if settings['total_time_steps']=='None':
     settings['total_time_steps']=settings['total_time']*10**9
     output_data_t=settings['total_time']/settings['Number_Data_Output']
+    t_inc=int(t/output_data_t)+1
 elif settings['total_time']=='None':
     settings['total_time']=settings['total_time_steps']
     output_data_nt=int(settings['total_time_steps']/settings['Number_Data_Output'])
+    t_inc=0
 
 while nt<settings['total_time_steps'] and t<settings['total_time']:
 #for nt in range(settings['total_time_steps']):
-    err,dt=solver.Advance_Soln()
+    err,dt=solver.Advance_Soln(vol)
     print 'Time step %i, Step size=%.6f, Time elapsed=%f;'%(nt+1,dt, t)
     if err==1:
         print '#################### Solver aborted #######################'
+        print 'Saving data to numpy array files...'
+        save_data(domain, '{:f}'.format(t))
         break
     
     t+=dt
     nt+=1
     # Output data to numpy files
-    if output_data_nt!=0 and nt%output_data_nt==0:
+    if (output_data_nt!=0 and nt%output_data_nt==0) or \
+        (output_data_t!=0 and (t>=output_data_t*t_inc and t-dt<output_data_t*t_inc)):
         print 'Saving data to numpy array files...'
-        np.save('rho_'+'{:f}'.format(t), domain.rho, False)
-        np.save('rhou_'+'{:f}'.format(t), domain.rhou, False)
-        np.save('rhov_'+'{:f}'.format(t), domain.rhov, False)
-        np.save('rhoE_'+'{:f}'.format(t), domain.rhoE, False)
-    if (output_data_t!=0) and ((t-dt)%output_data_t > t%output_data_t):
-        print 'Saving data to numpy array files...'
-        np.save('rho_'+'{:f}'.format(t), domain.rho, False)
-        np.save('rhou_'+'{:f}'.format(t), domain.rhou, False)
-        np.save('rhov_'+'{:f}'.format(t), domain.rhov, False)
-        np.save('rhoE_'+'{:f}'.format(t), domain.rhoE, False)
+        save_data(domain, '{:f}'.format(t))
+        
     
 #output_file.close()
 

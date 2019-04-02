@@ -74,68 +74,68 @@ class TwoDimPlanarSolve():
         else:
             return 2*k1*k2/(k1+k2)
     
-    # coefficients for temperature/velocity weighting in Advance_Soln
-    def get_Coeff(self, dx, dy, k, inter_type):
+    # coefficients for velocity weighting in stress calculation
+    def get_Coeff(self, dx, dy, k, mult_fac):
         aW=np.zeros_like(dx)
         aE=np.zeros_like(dx)
         aS=np.zeros_like(dx)
         aN=np.zeros_like(dx)
         
         # Left/right face factors
-        aW[1:-1,1:-1] =0.5*self.interpolate(k[1:-1,1:-1], k[1:-1,:-2], inter_type)\
+        aW[1:-1,1:-1] =0.5*k*mult_fac\
                     *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,:-2])
-        aE[1:-1,1:-1] =0.5*self.interpolate(k[1:-1,1:-1],k[1:-1,2:], inter_type)\
+        aE[1:-1,1:-1] =0.5*k*mult_fac\
                     *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,1:-1])
             # At north/south bondaries
-        aW[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[0,:-2], inter_type)\
+        aW[0,1:-1]    =0.5*k*mult_fac\
             *(dy[0,1:-1])/(dx[0,:-2])
-        aE[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[0,2:], inter_type)\
+        aE[0,1:-1]    =0.5*k*mult_fac\
             *(dy[0,1:-1])/(dx[0,1:-1])
-        aW[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-1,:-2], inter_type)\
+        aW[-1,1:-1]   =0.5*k*mult_fac\
             *(dy[-1,1:-1])/(dx[-1,:-2])
-        aE[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-1,2:], inter_type)\
+        aE[-1,1:-1]   =0.5*k*mult_fac\
             *(dy[-1,1:-1])/(dx[-1,1:-1])
             # At east/west boundaries
-        aE[0,0]       =0.5*self.interpolate(k[0,0],k[0,1], inter_type)\
+        aE[0,0]       =0.5*k*mult_fac\
             *(dy[0,0])/dx[0,0]
-        aE[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[1:-1,1], inter_type)\
+        aE[1:-1,0]    =0.5*k*mult_fac\
             *(dy[1:-1,0]+dy[:-2,0])/dx[1:-1,0]
-        aE[-1,0]      =0.5*self.interpolate(k[-1,0],k[-1,1], inter_type)\
+        aE[-1,0]      =0.5*k*mult_fac\
             *(dy[-1,0])/dx[-1,0]
-        aW[0,-1]      =0.5*self.interpolate(k[0,-1],k[0,-2], inter_type)\
+        aW[0,-1]      =0.5*k*mult_fac\
             *(dy[0,-1])/dx[0,-1]
-        aW[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[1:-1,-2], inter_type)\
+        aW[1:-1,-1]   =0.5*k*mult_fac\
             *(dy[1:-1,-1]+dy[:-2,-1])/dx[1:-1,-1]
-        aW[-1,-1]     =0.5*self.interpolate(k[-1,-1],k[-1,-2], inter_type)\
+        aW[-1,-1]     =0.5*k*mult_fac\
             *(dy[-1,-1])/dx[-1,-1]
         
         # Top/bottom faces
-        aS[1:-1,1:-1]=0.5*self.interpolate(k[1:-1,1:-1],k[:-2,1:-1], inter_type)\
+        aS[1:-1,1:-1]=0.5*k*mult_fac\
             *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[:-2,1:-1]
-        aN[1:-1,1:-1]=0.5*self.interpolate(k[1:-1,1:-1],k[2:,1:-1], inter_type)\
+        aN[1:-1,1:-1]=0.5*k*mult_fac\
             *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[1:-1,1:-1]
         
             # Area account for east/west boundary nodes
-        aS[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[:-2,0], inter_type)\
+        aS[1:-1,0]    =0.5*k*mult_fac\
             *(dx[1:-1,0])/(dy[:-2,0])
-        aN[1:-1,0]    =0.5*self.interpolate(k[1:-1,0],k[2:,0], inter_type)\
+        aN[1:-1,0]    =0.5*k*mult_fac\
             *(dx[1:-1,0])/(dy[1:-1,0])
-        aS[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[:-2,-1], inter_type)\
+        aS[1:-1,-1]   =0.5*k\
             *(dx[1:-1,-1])/(dy[:-2,-1])
-        aN[1:-1,-1]   =0.5*self.interpolate(k[1:-1,-1],k[2:,-1], inter_type)\
+        aN[1:-1,-1]   =0.5*k\
             *(dx[1:-1,-1])/(dy[1:-1,-1])
             # Forward/backward difference for north/south boundaries
-        aN[0,0]       =0.5*self.interpolate(k[0,0],k[1,0], inter_type)\
+        aN[0,0]       =0.5*k\
             *dx[0,0]/dy[0,0]
-        aN[0,1:-1]    =0.5*self.interpolate(k[0,1:-1],k[1,1:-1], inter_type)\
+        aN[0,1:-1]    =0.5*k\
             *(dx[0,1:-1]+dx[0,:-2])/dy[0,1:-1]
-        aN[0,-1]      =0.5*self.interpolate(k[0,-1],k[1,-1], inter_type)\
+        aN[0,-1]      =0.5*k\
             *dx[0,-1]/dy[0,-1]
-        aS[-1,0]      =0.5*self.interpolate(k[-1,0],k[-2,0], inter_type)\
+        aS[-1,0]      =0.5*k\
             *dx[-1,0]/dy[-1,0]
-        aS[-1,1:-1]   =0.5*self.interpolate(k[-1,1:-1],k[-2,1:-1], inter_type)\
+        aS[-1,1:-1]   =0.5*k\
             *(dx[0,1:-1]+dx[0,:-2])/dy[-1,1:-1]
-        aS[-1,-1]     =0.5*self.interpolate(k[-1,-1],k[-2,-1], inter_type)\
+        aS[-1,-1]     =0.5*k\
             *dx[-1,-1]/dy[-1,-1]
         
         return aW,aE,aS,aN
@@ -150,7 +150,7 @@ class TwoDimPlanarSolve():
 #        rhov=rho*v
         
         # Flux across left/right faces
-        ddx[1:-1,1:] =0.5*(rho[1:-1,1:]+rho[1:-1,:-1])\
+        ddx[1:-1,1:]  =0.5*(rho[1:-1,1:]+rho[1:-1,:-1])\
                 *0.5*(dy[1:-1,1:]+dy[:-2,1:])\
                 *0.5*(u[1:-1,1:]+u[1:-1,:-1])
         ddx[1:-1,:-1]-=0.5*(rho[1:-1,:-1]+rho[1:-1,1:])\
@@ -171,17 +171,17 @@ class TwoDimPlanarSolve():
                 *0.5*(u[-1,:-1]+u[-1,1:])
         
         # Flux across top/bottom faces
-        ddy[1:,1:-1] =0.5*(rho[1:,1:-1]+rho[:-1,1:-1])\
+        ddy[1:,1:-1]  =0.5*(rho[1:,1:-1]+rho[:-1,1:-1])\
                 *0.5*(dx[1:,1:-1]+dx[1:,:-2])\
                 *0.5*(v[1:,1:-1]+v[:-1,1:-1])
         ddy[:-1,1:-1]-=0.5*(rho[:-1,1:-1]+rho[1:,1:-1])\
                 *0.5*(dx[:-1,1:-1]+dx[:-1,:-2])\
                 *0.5*(v[:-1,1:-1]+v[1:,1:-1])
             # East/west boundaries
-        ddy[1:,0]  =0.5*(rho[1:,0]+rho[:-1,0])\
+        ddy[1:,0]   =0.5*(rho[1:,0]+rho[:-1,0])\
                 *0.5*(dx[1:,0])\
                 *0.5*(v[1:,0]+v[:-1,0])
-        ddy[:-1,0]-=0.5*(rho[:-1,0]+rho[1:,0])\
+        ddy[:-1,0] -=0.5*(rho[:-1,0]+rho[1:,0])\
                 *0.5*(dx[:-1,0])\
                 *0.5*(v[:-1,0]+v[1:,0])
         ddy[1:,-1]  =0.5*(rho[1:,-1]+rho[:-1,-1])\
@@ -210,215 +210,255 @@ class TwoDimPlanarSolve():
         return ddx+ddy
     
     # Shear stress gradient calculation for momentum
-    def Calculate_Stress(self, u, v, dx, dy):
+    def Calculate_Stress(self, u, v, dx, dy, stress):
         mu=self.Domain.mu
-        # Central differences up to boundaries
-        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
-            (v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-            (u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
-            (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
+        tau=np.zeros_like(dx)
+        # Diagonal stresses
+        if stress=='11':
+            tau[1:-1,1:-1]+=2.0/3*mu*(2*(u[1:-1,1:-1]-u[1:-1,:-2])/(dx[1:-1,:-2])-\
+               0.5*((v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
+                    (v[2:,:-2]-v[:-2,:-2])/(dy[1:-1,:-2]+dy[:-2,:-2])))
+            tau[1:-1,1:-1]-=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,1:-1])/(dx[1:-1,1:-1])-\
+               0.5*((v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
+                    (v[2:,2:]-v[:-2,2:])/(dy[1:-1,2:]+dy[:-2,2:])))
+            tau[1:-1,1:-1]*=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
+        elif stress=='22':
+            tau[1:-1,1:-1]+=2.0/3*mu*(2*(v[1:-1,1:-1]-v[:-2,1:-1])/(dy[:-2,1:-1])-\
+               0.5*((u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+                    (u[:-2,2:]-u[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
+            tau[1:-1,1:-1]-=2.0/3*mu*(2*(v[2:,1:-1]-v[1:-1,1:-1])/(dy[1:-1,1:-1])-\
+               0.5*((u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+                    (u[2:,2:]-u[2:,:-2])/(dx[2:,1:-1]+dx[2:,:-2])))
+            tau[1:-1,1:-1]*=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
         
-        # Boundary treatments dependent on periodicity
-        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
-            # North and south boundary values
-            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
-                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
-            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
-                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
-            
-            self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
-                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
-            self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
-                             (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
-            
-            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
-                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
-            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
-                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
-            # Left/right boundaries
-            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
-                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
-                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
-            
-            self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
-                             (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
-                             (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
-            
-            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
-                             (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
-            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
-                             (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
-            # Corner treatments
-            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(dx[0,0])-\
-                             (v[1,0]-v[-1,0])/(dy[0,0]+dy[-1,0]))
-            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(dx[0,-1])-\
-                             (v[1,-1]-v[-1,-1])/(dy[0,-1]+dy[-1,-1]))
-            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(dx[-1,0])-\
-                             (v[0,0]-v[-2,0])/(dy[-1,0]+dy[-2,0]))
-            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(dx[-1,-1])-\
-                             (v[0,-1]-v[-2,-1])/(dy[-1,-1]+dy[-2,-1]))
-            
-            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/dx[0,0]+\
-                             (u[1,0]-u[-1,0])/(dy[0,0]+dy[-1,0]))
-            self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(dx[0,-1])+\
-                             (u[1,-1]-u[-1,-1])/(dy[0,-1]+dy[-1,-1]))
-            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/dx[-1,0]+\
-                             (u[0,0]-u[-2,0])/(dy[-1,0]+dy[-2,0]))
-            self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/dx[-1,-1]+\
-                             (u[0,-1]-u[-2,-1])/(dy[-1,-1]+dy[-2,-1]))
-            
-            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[-1,0])/(dy[0,0]+dy[-1,0])-\
-                             (u[0,1]-u[0,0])/dx[0,0])
-            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[-1,-1])/(dy[0,-1]+dy[-1,-1])-\
-                             (u[0,-1]-u[0,-2])/dx[0,-1])
-            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[0,0]-v[-2,0])/(dy[-1,0]+dy[-2,0])-\
-                             (u[-1,1]-u[-1,0])/dx[-1,0])
-            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[0,-1]-v[-2,-1])/(dy[-1,-1]+dy[-2,-1])-\
-                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
-            
-            
-        elif (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
-            # Left/right boundaries
-            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])-\
-                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,0]-u[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2])-\
-                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
-            
-            self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])+\
-                             (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,0]-v[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2])+\
-                             (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
-            
-            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
-                             (u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1]))
-            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
-                             (u[1:-1,0]-u[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2]))
-            # North and south boundary values
-            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
-                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
-            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
-                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
-            
-            self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
-                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
-            self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
-                             (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
-            
-            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
-                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
-            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
-                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
-            # Corner treatments
-            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,-1])/(dx[0,0]+dx[0,-1])-\
-                             (v[1,0]-v[0,0])/dy[0,0])
-            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,0]-u[0,-2])/(dx[0,-1]+dx[0,-2])-\
-                             (v[1,-1]-v[0,-1])/dy[0,-1])
-            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,-1])/(dx[-1,0]+dx[-1,-1])-\
-                             (v[-1,0]-v[-2,0])/dy[-1,0])
-            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,0]-u[-1,-2])/(dx[-1,-1]+dx[-1,-2])-\
-                             (v[-1,-1]-v[-2,-1])/dy[-1,-1])
-            
-            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,-1])/(dx[0,0]+dx[0,-1])+\
-                             (u[1,0]-u[0,0])/dy[0,0])
-            self.Domain.tau12[0,-1]   =mu*((v[0,0]-v[0,-2])/(dx[-1,-1]+dx[-1,-2])+\
-                             (u[1,-1]-u[0,-1])/dy[0,-1])
-            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,-1])/(dx[-1,0]+dx[-1,-1])+\
-                             (u[-1,0]-u[-2,0])/dy[-1,0])
-            self.Domain.tau12[-1,-1]  =mu*((v[-1,0]-v[-1,-2])/(dx[-1,-1]+dx[-1,-2])+\
-                             (u[-1,-1]-u[-2,-1])/dy[-1,-1])
-            
-            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/dy[0,0]-\
-                             (u[0,1]-u[0,-1])/(dx[0,0]+dx[0,-1]))
-            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/dy[0,-1]-\
-                             (u[0,0]-u[0,-2])/(dx[0,-1]+dx[0,-2]))
-            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/dy[-1,0]-\
-                             (u[-1,1]-u[-1,-1])/(dx[-1,0]+dx[-1,-1]))
-            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
-                             (u[-1,0]-u[-1,-2])/(dx[-1,-1]+dx[-1,-2]))
-        
-        # No periodicity
+        # Off-diagonal stresses
+        elif stress=='21':
+            tau[1:-1,1:-1]+=mu*((u[1:-1,1:-1]-u[:-2,1:-1])/(dy[:-2,1:-1])-\
+               0.5*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+                    (v[:-2,2:]-v[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
+            tau[1:-1,1:-1]-=mu*((u[1:-1,1:-1]-u[:-2,1:-1])/(dy[:-2,1:-1])-\
+               0.5*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+                    (v[:-2,2:]-v[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
+            tau[1:-1,1:-1]*=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
         else:
-            # North and south boundary values
-            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
-                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
-            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
-                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
-            
-            if self.BCs['bc_type_south']=='outlet':
-                self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
-            elif self.BCs['bc_type_south']=='slip_wall':
-                self.Domain.tau12[0,1:-1] =0
-            else:
-                self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
-                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
-            if self.BCs['bc_type_north']=='outlet':
-                self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
-            elif self.BCs['bc_type_north']=='slip_wall':
-                self.Domain.tau12[-1,1:-1]=0
-            else:
-                self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
-                                 (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
-            
-            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
-                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
-            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
-                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
-            # Left/right boundaries
-            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
-                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
-                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
-            
-            if self.BCs['bc_type_left']=='outlet':
-                self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
-            elif self.BCs['bc_type_left']=='slip_wall':
-                self.Domain.tau12[1:-1,0] =0
-            else:
-                self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
-                                 (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-            if self.BCs['bc_type_right']=='outlet':
-                self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
-            elif self.BCs['bc_type_right']=='slip_wall':
-                self.Domain.tau12[1:-1,-1]=0
-            else:
-                self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
-                                 (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
-            
-            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
-                             (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
-            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
-                             (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
-            # Corner treatments
-            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(dx[0,0])-\
-                             (v[1,0]-v[0,0])/dy[0,0])
-            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(dx[0,-1])-\
-                             (v[1,-1]-v[0,-1])/dy[0,-1])
-            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(dx[-1,0])-\
-                             (v[-1,0]-v[-2,0])/dy[-1,0])
-            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(dx[-1,-1])-\
-                             (v[-1,-1]-v[-2,-1])/dy[-1,-1])
-            
-            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/dx[0,0]+\
-                             (u[1,0]-u[0,0])/dy[0,0])
-            self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(dx[0,-1])+\
-                             (u[1,-1]-u[0,-1])/dy[0,-1])
-            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/dx[-1,0]+\
-                             (u[-1,0]-u[-2,0])/dy[-1,0])
-            self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/dx[-1,-1]+\
-                             (u[-1,-1]-u[-2,-1])/dy[-1,-1])
-            
-            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/dy[0,0]-\
-                             (u[0,1]-u[0,0])/dx[0,0])
-            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/dy[0,-1]-\
-                             (u[0,-1]-u[0,-2])/dx[0,-1])
-            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/dy[-1,0]-\
-                             (u[-1,1]-u[-1,0])/dx[-1,0])
-            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
-                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
+            tau[1:-1,1:-1]+=mu*((v[1:-1,1:-1]-v[1:-1,:-2])/(dx[1:-1,:-2])-\
+               0.5*((u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
+                    (u[2:,:-2]-u[:-2,:-2])/(dy[1:-1,:-2]+dy[:-2,:-2])))
+            tau[1:-1,1:-1]-=mu*((v[1:-1,2:]-v[1:-1,1:-1])/(dx[1:-1,1:-1])-\
+               0.5*((u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
+                    (u[2:,2:]-u[:-2,2:])/(dy[1:-1,2:]+dy[:-2,2:])))
+            tau[1:-1,1:-1]*=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
+        
+        return tau
+        
+#        # Central differences up to boundaries
+#        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
+#            (v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
+#        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+#            (u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
+#        self.Domain.tau21[1:-1,1:-1]
+#        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
+#            (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
+#        
+#        # Boundary treatments dependent on periodicity
+#        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+#            # North and south boundary values
+#            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
+#                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
+#            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
+#                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
+#            
+#            self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
+#                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
+#            self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
+#                             (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
+#            
+#            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
+#                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
+#            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
+#                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
+#            # Left/right boundaries
+#            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
+#                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
+#                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
+#            
+#            self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
+#                             (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
+#                             (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
+#            
+#            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
+#                             (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
+#            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
+#                             (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
+#            # Corner treatments
+#            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(dx[0,0])-\
+#                             (v[1,0]-v[-1,0])/(dy[0,0]+dy[-1,0]))
+#            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(dx[0,-1])-\
+#                             (v[1,-1]-v[-1,-1])/(dy[0,-1]+dy[-1,-1]))
+#            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(dx[-1,0])-\
+#                             (v[0,0]-v[-2,0])/(dy[-1,0]+dy[-2,0]))
+#            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(dx[-1,-1])-\
+#                             (v[0,-1]-v[-2,-1])/(dy[-1,-1]+dy[-2,-1]))
+#            
+#            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/dx[0,0]+\
+#                             (u[1,0]-u[-1,0])/(dy[0,0]+dy[-1,0]))
+#            self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(dx[0,-1])+\
+#                             (u[1,-1]-u[-1,-1])/(dy[0,-1]+dy[-1,-1]))
+#            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/dx[-1,0]+\
+#                             (u[0,0]-u[-2,0])/(dy[-1,0]+dy[-2,0]))
+#            self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/dx[-1,-1]+\
+#                             (u[0,-1]-u[-2,-1])/(dy[-1,-1]+dy[-2,-1]))
+#            
+#            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[-1,0])/(dy[0,0]+dy[-1,0])-\
+#                             (u[0,1]-u[0,0])/dx[0,0])
+#            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[-1,-1])/(dy[0,-1]+dy[-1,-1])-\
+#                             (u[0,-1]-u[0,-2])/dx[0,-1])
+#            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[0,0]-v[-2,0])/(dy[-1,0]+dy[-2,0])-\
+#                             (u[-1,1]-u[-1,0])/dx[-1,0])
+#            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[0,-1]-v[-2,-1])/(dy[-1,-1]+dy[-2,-1])-\
+#                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
+#            
+#            
+#        elif (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+#            # Left/right boundaries
+#            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])-\
+#                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,0]-u[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2])-\
+#                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
+#            
+#            self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])+\
+#                             (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,0]-v[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2])+\
+#                             (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
+#            
+#            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
+#                             (u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1]))
+#            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
+#                             (u[1:-1,0]-u[1:-1,-2])/(dx[1:-1,-1]+dx[1:-1,-2]))
+#            # North and south boundary values
+#            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
+#                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
+#            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
+#                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
+#            
+#            self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
+#                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
+#            self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
+#                             (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
+#            
+#            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
+#                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
+#            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
+#                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
+#            # Corner treatments
+#            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,-1])/(dx[0,0]+dx[0,-1])-\
+#                             (v[1,0]-v[0,0])/dy[0,0])
+#            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,0]-u[0,-2])/(dx[0,-1]+dx[0,-2])-\
+#                             (v[1,-1]-v[0,-1])/dy[0,-1])
+#            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,-1])/(dx[-1,0]+dx[-1,-1])-\
+#                             (v[-1,0]-v[-2,0])/dy[-1,0])
+#            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,0]-u[-1,-2])/(dx[-1,-1]+dx[-1,-2])-\
+#                             (v[-1,-1]-v[-2,-1])/dy[-1,-1])
+#            
+#            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,-1])/(dx[0,0]+dx[0,-1])+\
+#                             (u[1,0]-u[0,0])/dy[0,0])
+#            self.Domain.tau12[0,-1]   =mu*((v[0,0]-v[0,-2])/(dx[-1,-1]+dx[-1,-2])+\
+#                             (u[1,-1]-u[0,-1])/dy[0,-1])
+#            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,-1])/(dx[-1,0]+dx[-1,-1])+\
+#                             (u[-1,0]-u[-2,0])/dy[-1,0])
+#            self.Domain.tau12[-1,-1]  =mu*((v[-1,0]-v[-1,-2])/(dx[-1,-1]+dx[-1,-2])+\
+#                             (u[-1,-1]-u[-2,-1])/dy[-1,-1])
+#            
+#            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/dy[0,0]-\
+#                             (u[0,1]-u[0,-1])/(dx[0,0]+dx[0,-1]))
+#            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/dy[0,-1]-\
+#                             (u[0,0]-u[0,-2])/(dx[0,-1]+dx[0,-2]))
+#            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/dy[-1,0]-\
+#                             (u[-1,1]-u[-1,-1])/(dx[-1,0]+dx[-1,-1]))
+#            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
+#                             (u[-1,0]-u[-1,-2])/(dx[-1,-1]+dx[-1,-2]))
+#        
+#        # No periodicity
+#        else:
+#            # North and south boundary values
+#            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
+#                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
+#            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
+#                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
+#            
+#            if self.BCs['bc_type_south']=='outlet':
+#                self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
+#            elif self.BCs['bc_type_south']=='slip_wall':
+#                self.Domain.tau12[0,1:-1] =0
+#            else:
+#                self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
+#                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
+#            if self.BCs['bc_type_north']=='outlet':
+#                self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
+#            elif self.BCs['bc_type_north']=='slip_wall':
+#                self.Domain.tau12[-1,1:-1]=0
+#            else:
+#                self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
+#                                 (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
+#            
+#            self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
+#                             (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
+#            self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
+#                             (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
+#            # Left/right boundaries
+#            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
+#                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
+#                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
+#            
+#            if self.BCs['bc_type_left']=='outlet':
+#                self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
+#            elif self.BCs['bc_type_left']=='slip_wall':
+#                self.Domain.tau12[1:-1,0] =0
+#            else:
+#                self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
+#                                 (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
+#            if self.BCs['bc_type_right']=='outlet':
+#                self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
+#            elif self.BCs['bc_type_right']=='slip_wall':
+#                self.Domain.tau12[1:-1,-1]=0
+#            else:
+#                self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
+#                                 (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
+#            
+#            self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
+#                             (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
+#            self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
+#                             (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
+#            # Corner treatments
+#            self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(dx[0,0])-\
+#                             (v[1,0]-v[0,0])/dy[0,0])
+#            self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(dx[0,-1])-\
+#                             (v[1,-1]-v[0,-1])/dy[0,-1])
+#            self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(dx[-1,0])-\
+#                             (v[-1,0]-v[-2,0])/dy[-1,0])
+#            self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(dx[-1,-1])-\
+#                             (v[-1,-1]-v[-2,-1])/dy[-1,-1])
+#            
+#            self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/dx[0,0]+\
+#                             (u[1,0]-u[0,0])/dy[0,0])
+#            self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(dx[0,-1])+\
+#                             (u[1,-1]-u[0,-1])/dy[0,-1])
+#            self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/dx[-1,0]+\
+#                             (u[-1,0]-u[-2,0])/dy[-1,0])
+#            self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/dx[-1,-1]+\
+#                             (u[-1,-1]-u[-2,-1])/dy[-1,-1])
+#            
+#            self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/dy[0,0]-\
+#                             (u[0,1]-u[0,0])/dx[0,0])
+#            self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/dy[0,-1]-\
+#                             (u[0,-1]-u[0,-2])/dx[0,-1])
+#            self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/dy[-1,0]-\
+#                             (u[-1,1]-u[-1,0])/dx[-1,0])
+#            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
+#                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
             
     
     # Work via control surface calculation (grad*(sigma*v))
@@ -436,50 +476,115 @@ class TwoDimPlanarSolve():
     # Heat conduction gradient source term
     def Source_Cond(self, T, dx, dy):
         qx=np.empty_like(T)
-        qy=np.empty_like(T)
+        aW=np.zeros_like(dx)
+        aE=np.zeros_like(dx)
+        aS=np.zeros_like(dx)
+        aN=np.zeros_like(dx)
         k=self.Domain.k
-        # Central difference
-        qx[:,1:-1]=-k*(T[:,2:]-T[:,:-2])/(dx[:,1:-1]+dx[:,:-2])
-        qy[1:-1,:]=-k*(T[2:,:]-T[:-2,:])/(dy[1:-1,:]+dy[:-2,:])
-        # Forward/backward difference for boundaries (if not periodic)
-        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):        
-            qx[:,0] =-k*(T[:,1]-T[:,-1])/(dx[:,0]+dx[:,-1])
-            qx[:,-1]=-k*(T[:,0]-T[:,-2])/(dx[:,-1]+dx[:,-2])
-        elif self.BCs['bc_type_left']=='outlet':
-            qx[:,0] =qx[:,1]
-            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
-        elif type(self.BCs['bc_left_T']) is tuple:
-            qx[:,0] =self.BCs['bc_left_T'][1]
-            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
-        elif self.BCs['bc_type_right']=='outlet':
-            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
-            qx[:,-1]=qx[:,-2]
-        elif type(self.BCs['bc_right_T']) is tuple:
-            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
-            qx[:,-1]=self.BCs['bc_right_T'][1]
-        else:
-            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
-            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        # Temperature weighting coefficients
         
-        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
-            qy[0,:] =-k*(T[1,:]-T[-1,:])/(dy[0,:]+dy[-1,:])
-            qy[-1,:]=-k*(T[0,:]-T[-2,:])/(dy[-1,:]+dy[-2,:])
-        elif self.BCs['bc_type_north']=='outlet':
-            qy[-1,:]=qy[-2,:]
-            qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
-        elif type(self.BCs['bc_north_T']) is tuple:
-            qy[-1,:]=self.BCs['bc_north_T'][1]
-            qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
-        elif self.BCs['bc_type_south']=='outlet':
-            qy[0,:] =qy[1,:]
-            qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
-        elif type(self.BCs['bc_south_T']) is tuple:
-            qy[0,:] =self.BCs['bc_south_T'][1]
-            qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
-        else:
-            qy[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
-            qy[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
-        return self.compute_Flux(1.0,qx,qy,dx,dy)
+        # Left/right face factors
+        aW[1:-1,1:-1] =0.5*k\
+                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,:-2])
+        aE[1:-1,1:-1] =0.5*k\
+                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,1:-1])
+            # At north/south bondaries
+        aW[0,1:-1]    =0.5*k\
+            *(dy[0,1:-1])/(dx[0,:-2])
+        aE[0,1:-1]    =0.5*k\
+            *(dy[0,1:-1])/(dx[0,1:-1])
+        aW[-1,1:-1]   =0.5*k\
+            *(dy[-1,1:-1])/(dx[-1,:-2])
+        aE[-1,1:-1]   =0.5*k\
+            *(dy[-1,1:-1])/(dx[-1,1:-1])
+            # At east/west boundaries
+        aE[0,0]       =0.5*k\
+            *(dy[0,0])/dx[0,0]
+        aE[1:-1,0]    =0.5*k\
+            *(dy[1:-1,0]+dy[:-2,0])/dx[1:-1,0]
+        aE[-1,0]      =0.5*k\
+            *(dy[-1,0])/dx[-1,0]
+        aW[0,-1]      =0.5*k\
+            *(dy[0,-1])/dx[0,-1]
+        aW[1:-1,-1]   =0.5*k\
+            *(dy[1:-1,-1]+dy[:-2,-1])/dx[1:-1,-1]
+        aW[-1,-1]     =0.5*k\
+            *(dy[-1,-1])/dx[-1,-1]
+        
+        # Top/bottom faces
+        aS[1:-1,1:-1]=0.5*k\
+            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[:-2,1:-1]
+        aN[1:-1,1:-1]=0.5*k\
+            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[1:-1,1:-1]
+        
+            # Area account for east/west boundary nodes
+        aS[1:-1,0]    =0.5*k\
+            *(dx[1:-1,0])/(dy[:-2,0])
+        aN[1:-1,0]    =0.5*k\
+            *(dx[1:-1,0])/(dy[1:-1,0])
+        aS[1:-1,-1]   =0.5*k\
+            *(dx[1:-1,-1])/(dy[:-2,-1])
+        aN[1:-1,-1]   =0.5*k\
+            *(dx[1:-1,-1])/(dy[1:-1,-1])
+            # Forward/backward difference for north/south boundaries
+        aN[0,0]       =0.5*k\
+            *dx[0,0]/dy[0,0]
+        aN[0,1:-1]    =0.5*k\
+            *(dx[0,1:-1]+dx[0,:-2])/dy[0,1:-1]
+        aN[0,-1]      =0.5*k\
+            *dx[0,-1]/dy[0,-1]
+        aS[-1,0]      =0.5*k\
+            *dx[-1,0]/dy[-1,0]
+        aS[-1,1:-1]   =0.5*k\
+            *(dx[0,1:-1]+dx[0,:-2])/dy[-1,1:-1]
+        aS[-1,-1]     =0.5*k\
+            *dx[-1,-1]/dy[-1,-1]
+        
+        qx[:,1:]    = aW[:,1:]*T[:,:-1]
+        qx[:,0]     = aE[:,0]*T[:,1]
+        
+        qx[:,1:-1] += aE[:,1:-1]*T[:,2:]
+        qx[1:,:]   += aS[1:,:]*T[:-1,:]
+        qx[:-1,:]  += aN[:-1,:]*T[1:,:]
+        qx         -= (aW+aE+aS+aN)*T
+        
+        # Apply boundary conditions on heat flux
+#        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):        
+#            qx[:,0] =-k*(T[:,1]-T[:,-1])/(dx[:,0]+dx[:,-1])
+#            qx[:,-1]=-k*(T[:,0]-T[:,-2])/(dx[:,-1]+dx[:,-2])
+        if self.BCs['bc_type_left']=='outlet':
+            qx[:,0] -=aE[:,0]*(T[:,1]-T[:,0]) # Effect is 0 flux in x
+            
+#        elif type(self.BCs['bc_left_T']) is tuple:
+#            qx[:,0] =self.BCs['bc_left_T'][1]
+#            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        if self.BCs['bc_type_right']=='outlet':
+            qx[:,-1]-=aW[:,-1]*(T[:,-1]-T[:,-2])
+#        elif type(self.BCs['bc_right_T']) is tuple:
+#            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
+#            qx[:,-1]=self.BCs['bc_right_T'][1]
+#        else:
+#            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
+#            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
+        
+#        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+#            qy[0,:] =-k*(T[1,:]-T[-1,:])/(dy[0,:]+dy[-1,:])
+#            qy[-1,:]=-k*(T[0,:]-T[-2,:])/(dy[-1,:]+dy[-2,:])
+        if self.BCs['bc_type_north']=='outlet':
+            qx[-1,:]-=aS[-1,:]*(T[-1,:]-T[-2,:])
+#        elif type(self.BCs['bc_north_T']) is tuple:
+#            qx[-1,:]=self.BCs['bc_north_T'][1]
+#            qx[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
+        if self.BCs['bc_type_south']=='outlet':
+            qx[0,:] -=aN[0,:]*(T[1,:]-T[0,:])
+#        elif type(self.BCs['bc_south_T']) is tuple:
+#            qx[0,:] =self.BCs['bc_south_T'][1]
+#            qx[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
+#        else:
+#            qx[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
+#            qx[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
+        
+        return qx
     
     # Bondary condition handler (not including periodic BCs)
     def Apply_BCs(self, rho, rhou, rhov, rhoE, u, v, p, T, dx, dy):
@@ -491,10 +596,7 @@ class TwoDimPlanarSolve():
             p[:,0]  =p[:,1]
             rhou[:,0]  =0
             rhov[:,0]  =0
-#            if type(self.BCs['bc_left_T']) is tuple:
-#                T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
-            if type(self.BCs['bc_left_T']) is not tuple:#else:
-                T[:,0]  =self.BCs['bc_left_T']
+            T[:,0]  =self.BCs['bc_left_T']
             rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
 #            rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
             rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)
@@ -502,10 +604,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_left']=='slip_wall':
             rhou[:,0]  =0
             p[:,0]  =p[:,1]
-#            if type(self.BCs['bc_left_T']) is tuple:
-#                T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
-            if type(self.BCs['bc_left_T']) is not tuple:#else:
-                T[:,0]  =self.BCs['bc_left_T']
+            T[:,0]  =self.BCs['bc_left_T']
             rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
 #            rhoE[:,0]=rho[:,0]*(0.5*(v[:,0]**2)+self.Domain.Cv*T[:,0])
             rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)
@@ -515,10 +614,7 @@ class TwoDimPlanarSolve():
 #            pt      =self.BCs['bc_left_p']
             u[:,0]  =self.BCs['bc_left_u']
             v[:,0]  =self.BCs['bc_left_v']
-            if type(self.BCs['bc_left_T']) is tuple:
-                T[:,0]  =T[:,1]-self.BCs['bc_left_T'][1]*dx[:,0]
-            else:
-                T[:,0]  =self.BCs['bc_left_T']
+            T[:,0]  =self.BCs['bc_left_T']
             
 #            u[:,0]=np.sqrt(2*self.Domain.gamma*self.Domain.R*T[:,0]/(self.Domain.gamma-1)\
 #                 *((p[:,0]/pt)**(self.Domain.gamma/(self.Domain.gamma-1))-1))
@@ -549,8 +645,7 @@ class TwoDimPlanarSolve():
             rhov[:,-1]  =0
 #            if type(self.BCs['bc_right_T']) is tuple:
 #                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
-            if type(self.BCs['bc_right_T']) is not tuple:#else:
-                T[:,-1]  =self.BCs['bc_right_T']
+            T[:,-1]  =self.BCs['bc_right_T']
             rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
 #            rhoE[:,-1]=rho[:,-1]*self.Domain.Cv*T[:,-1]
             rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)
@@ -560,8 +655,7 @@ class TwoDimPlanarSolve():
             rhou[:,-1]  =0
 #            if type(self.BCs['bc_right_T']) is tuple:
 #                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
-            if type(self.BCs['bc_right_T']) is not tuple:#else:
-                T[:,-1]  =self.BCs['bc_right_T']
+            T[:,-1]  =self.BCs['bc_right_T']
             rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
 #            rhoE[:,-1]=rho[:,-1]*(0.5*(v[:,-1]**2)+self.Domain.Cv*T[:,-1])
             rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)
@@ -569,10 +663,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_right']=='inlet':
             u[:,-1]  =self.BCs['bc_right_u']
             v[:,-1]  =self.BCs['bc_right_v']
-            if type(self.BCs['bc_right_T']) is tuple:
-                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
-            else:
-                T[:,-1]  =self.BCs['bc_right_T']
+            T[:,-1]  =self.BCs['bc_right_T']
             p[:,-1]  =self.BCs['bc_right_p']
 #            rho[:,-1]=p[:,-1]/self.Domain.R/T[:,-1]
             
@@ -595,10 +686,7 @@ class TwoDimPlanarSolve():
             p[0,:]  =p[1,:]
             rhou[0,:]  =0
             rhov[0,:]  =0
-#            if type(self.BCs['bc_south_T']) is tuple:
-#                T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
-            if type(self.BCs['bc_south_T']) is not tuple:#else:
-                T[0,:]  =self.BCs['bc_south_T']
+            T[0,:]  =self.BCs['bc_south_T']
             rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
 #            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
             rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)
@@ -606,10 +694,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_south']=='slip_wall':
             p[0,:]  =p[1,:]
             rhov[0,:]  =0
-#            if type(self.BCs['bc_south_T']) is tuple:
-#                T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
-            if type(self.BCs['bc_south_T']) is not tuple:#else:
-                T[0,:]  =self.BCs['bc_south_T']
+            T[0,:]  =self.BCs['bc_south_T']
             rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
 #            rhoE[0,:]=rho[0,:]*(0.5*(u[0,:]**2)+self.Domain.Cv*T[0,:])
             rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)
@@ -617,10 +702,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_south']=='inlet':
             u[0,:]  =self.BCs['bc_south_u']
             v[0,:]  =self.BCs['bc_south_v']
-            if type(self.BCs['bc_south_T']) is tuple:
-                T[0,:]  =T[1,:]-self.BCs['bc_south_T'][1]*dy[0,:]
-            else:
-                T[0,:]  =self.BCs['bc_south_T']
+            T[0,:]  =self.BCs['bc_south_T']
             p[0,:]  =self.BCs['bc_south_p']
 #            rho[0,:]=p[0,:]/self.Domain.R/T[0,:]
             
@@ -644,10 +726,7 @@ class TwoDimPlanarSolve():
             p[-1,:]  =p[-2,:]
             rhou[-1,:]  =0
             rhov[-1,:]  =0
-#            if type(self.BCs['bc_north_T']) is tuple:
-#                T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
-            if type(self.BCs['bc_north_T']) is not tuple:#else:
-                T[-1,:]  =self.BCs['bc_north_T']
+            T[-1,:]  =self.BCs['bc_north_T']
             rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
 #            rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)
@@ -655,10 +734,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_north']=='slip_wall':
             p[-1,:]  =p[-2,:]
             rhov[-1,:]  =0
-#            if type(self.BCs['bc_north_T']) is tuple:
-#                T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
-            if type(self.BCs['bc_north_T']) is not tuple:#else:
-                T[-1,:]  =self.BCs['bc_north_T']
+            T[-1,:]  =self.BCs['bc_north_T']
             rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
 #            rhoE[-1,:]=rho[-1,:]*(0.5*(u[-1,:]**2)+self.Domain.Cv*T[-1,:])
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)
@@ -666,10 +742,7 @@ class TwoDimPlanarSolve():
         elif self.BCs['bc_type_north']=='inlet':
             u[-1,:]  =self.BCs['bc_north_u']
             v[-1,:]  =self.BCs['bc_north_v']
-            if type(self.BCs['bc_north_T']) is tuple:
-                T[-1,:]  =T[-2,:]+self.BCs['bc_north_T'][1]*dy[-1,:]
-            else:
-                T[-1,:]  =self.BCs['bc_north_T']
+            T[-1,:]  =self.BCs['bc_north_T']
             p[-1,:]  =self.BCs['bc_north_p']
 #            rho[-1,:]=p[-1,:]/self.Domain.R/T[-1,:]
             
@@ -688,7 +761,7 @@ class TwoDimPlanarSolve():
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
     # Main compressible solver (1 time step)
-    def Advance_Soln(self):
+    def Advance_Soln(self, vol):
         rho_0=self.Domain.rho.copy()
         rhou_0=self.Domain.rhou.copy()
         rhov_0=self.Domain.rhov.copy()
@@ -737,30 +810,33 @@ class TwoDimPlanarSolve():
             ###################################################################
             # Compute time deriviatives of conservatives (2nd order central schemes)
             ###################################################################
-            # Calculate shear stress arrays for momentum and energy
-            self.Calculate_Stress(u, v, self.dx, self.dy)
-    
+            
             # Density
             drhodt[step] =self.compute_Flux(rho_c, u, v, self.dx, self.dy)
-    
+            drhodt[step]/=vol
+            
             # x-momentum (flux, pressure, shear stress, gravity)
             drhoudt[step] =self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
             drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), self.dx, self.dy)
-            drhoudt[step]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)
+            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'11')
+            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'21')
             drhoudt[step]+=rho_c*self.gx
+            drhoudt[step]/=vol
     
             # y-momentum (flux, pressure, shear stress, gravity)
             drhovdt[step] =self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
             drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), self.dx, self.dy)
             drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
             drhovdt[step]+=rho_c*self.gy
+            drhovdt[step]/=vol
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
             drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
-            drhoEdt[step]-=self.compute_Flux(p, u, v, self.dx, self.dy)
+            drhoEdt[step]+=self.compute_Flux(p, u, v, self.dx, self.dy)
             drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)
+            drhoEdt[step]/=vol
 
             # Compute intermediate conservative values for RK stepping
             rho_c =rho_0.copy()

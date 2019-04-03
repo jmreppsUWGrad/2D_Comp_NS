@@ -149,6 +149,34 @@ class TwoDimPlanar:
         v[-1,-1]    =0.25*(dx[-1,-1])*(dy[-1,-1])
         return v
     
+    # Calculate and return area of faces at each node
+    def CV_area(self):
+        Ax=np.zeros_like(self.E)
+        Ay=np.zeros_like(self.E)
+        dx,dy=np.meshgrid(self.dx, self.dy)
+        # Left/right face areas
+        Ax[1:-1,1:-1]=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
+        Ax[0,1:-1]   =0.5*(dy[0,1:-1])
+        Ax[-1,1:-1]  =0.5*(dy[-1,1:-1])
+        Ax[1:-1,-1]  =0.5*(dy[1:-1,-1]+dy[:-2,-1])
+        Ax[1:-1,0]   =0.5*(dy[1:-1,0]+dy[:-2,0])
+        Ax[0,0]      =0.5*(dy[0,0])
+        Ax[-1,0]     =0.5*(dy[-1,0])
+        Ax[0,-1]     =0.5*(dy[0,-1])
+        Ax[-1,-1]    =0.5*(dy[-1,-1])
+        # North/south face areas
+        Ay[1:-1,1:-1]=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
+        Ay[1:-1,0]   =0.5*(dx[1:-1,0])
+        Ay[1:-1,-1]  =0.5*(dx[1:-1,-1])
+        Ay[0,1:-1]   =0.5*(dx[0,1:-1]+dx[0,:-2])
+        Ay[-1,1:-1]  =0.5*(dx[0,1:-1]+dx[0,:-2])
+        Ay[0,0]      =0.5*(dx[0,0])
+        Ay[0,-1]     =0.5*(dx[0,-1])
+        Ay[-1,0]     =0.5*(dx[-1,0])
+        Ay[-1,-1]    =0.5*(dx[-1,-1])
+        
+        return Ax, Ay
+    
     # Return primitive variables from conservative ones
     def primitiveFromConserv(self, rho, rhou, rhov, rhoE):
         u=rhou/rho

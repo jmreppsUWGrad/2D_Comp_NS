@@ -215,40 +215,76 @@ class TwoDimPlanarSolve():
         tau=np.zeros_like(dx)
         # Diagonal stresses
         if stress=='11':
-            tau[1:-1,1:-1]+=2.0/3*mu*(2*(u[1:-1,1:-1]-u[1:-1,:-2])/(dx[1:-1,:-2])-\
-               0.5*((v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
-                    (v[2:,:-2]-v[:-2,:-2])/(dy[1:-1,:-2]+dy[:-2,:-2])))
-            tau[1:-1,1:-1]-=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,1:-1])/(dx[1:-1,1:-1])-\
-               0.5*((v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
-                    (v[2:,2:]-v[:-2,2:])/(dy[1:-1,2:]+dy[:-2,2:])))
-            tau[1:-1,1:-1]*=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
+            # d/dx terms on all faces
+            tau[:,:-1]+=4.0/3*mu*(u[:,1:]-u[:,:-1])/(dx[:,:-1])
+            tau[:,1:] -=4.0/3*mu*(u[:,1:]-u[:,:-1])/(dx[:,:-1])
+            # d/dy terms
+            tau[1:-1,:-1]+=2.0/3*mu*0.5*((v[2:,:-1]-v[:-2,:-1])/(dy[1:-1,:-1]+dy[:-2,:-1])+\
+                    (v[2:,1:]-v[:-2,1:])/(dy[1:-1,1:]+dy[:-2,1:]))
+            tau[1:-1,1:]-=2.0/3*mu*0.5*((v[2:,1:]-v[:-2,1:])/(dy[1:-1,1:]+dy[:-2,1:])+\
+                    (v[2:,:-1]-v[:-2,:-1])/(dy[1:-1,:-1]+dy[:-2,:-1]))
+            
+            tau[0,:-1]+=2.0/3*mu*0.5*((v[1,:-1]-v[0,:-1])/(dy[0,:-1])+\
+                    (v[1,1:]-v[0,1:])/(dy[0,1:]))
+            tau[0,1:]-=2.0/3*mu*0.5*((v[1,:-1]-v[0,:-1])/(dy[0,:-1])+\
+                    (v[1,1:]-v[0,1:])/(dy[0,1:]))
+            tau[-1,:-1]+=2.0/3*mu*0.5*((v[-1,:-1]-v[-2,:-1])/(dy[-1,:-1])+\
+                    (v[-1,1:]-v[-2,1:])/(dy[0,1:]))
+            tau[-1,1:]-=2.0/3*mu*0.5*((v[-1,:-1]-v[-2,:-1])/(dy[-1,:-1])+\
+                    (v[-1,1:]-v[-2,1:])/(dy[0,1:]))
         elif stress=='22':
-            tau[1:-1,1:-1]+=2.0/3*mu*(2*(v[1:-1,1:-1]-v[:-2,1:-1])/(dy[:-2,1:-1])-\
-               0.5*((u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-                    (u[:-2,2:]-u[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
-            tau[1:-1,1:-1]-=2.0/3*mu*(2*(v[2:,1:-1]-v[1:-1,1:-1])/(dy[1:-1,1:-1])-\
-               0.5*((u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-                    (u[2:,2:]-u[2:,:-2])/(dx[2:,1:-1]+dx[2:,:-2])))
-            tau[1:-1,1:-1]*=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
+            # d/dy terms
+            tau[:-1,:]+=4.0/3*mu*(v[1:,:]-v[:-1,:])/(dy[:-1,:])
+            tau[1:,:]-=4.0/3*mu*(v[1:,:]-v[:-1,:])/(dy[:-1,:])
+            # d/dx terms
+            tau[:-1,1:-1]+=2.0/3*mu*0.5*((u[:-1,2:]-u[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2])+\
+                    (u[1:,2:]-u[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2]))
+            tau[1:,1:-1]-=2.0/3*mu*0.5*((u[1:,2:]-u[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2])+\
+                    (u[:-1,2:]-u[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2]))
+            
+            tau[:-1,0]+=2.0/3*mu*0.5*((u[:-1,1]-u[:-1,0])/(dx[:-1,0])+\
+                    (u[1:,1]-u[1:,0])/(dx[1:,0]))
+            tau[1:,0]-=2.0/3*mu*0.5*((u[1:,1]-u[1:,0])/(dx[1:,0])+\
+                    (u[:-1,1]-u[:-1,0])/(dx[:-1,1:-1]+dx[:-1,0]))
         
         # Off-diagonal stresses
         elif stress=='21':
-            tau[1:-1,1:-1]+=mu*((u[1:-1,1:-1]-u[:-2,1:-1])/(dy[:-2,1:-1])-\
-               0.5*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-                    (v[:-2,2:]-v[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
-            tau[1:-1,1:-1]-=mu*((u[1:-1,1:-1]-u[:-2,1:-1])/(dy[:-2,1:-1])-\
-               0.5*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-                    (v[:-2,2:]-v[:-2,:-2])/(dx[:-2,1:-1]+dx[:-2,:-2])))
-            tau[1:-1,1:-1]*=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
+            # d/dy terms
+            tau[:-1,:]+=mu*(u[1:,:]-u[:-1,:])/(dy[:-1,:])
+            tau[1:,:]-=mu*(u[1:,:]-u[:-1,:])/(dy[:-1,:])
+            # d/dx terms
+            tau[:-1,1:-1]+=mu*0.5*((v[:-1,2:]-v[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2])+\
+                    (v[1:,2:]-v[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2]))
+            tau[1:,1:-1]-=mu*0.5*((v[1:,2:]-v[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2])+\
+                    (v[:-1,2:]-v[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2]))
+            
+            tau[:-1,1:-1]+=2.0/3*mu*0.5*((v[:-1,2:]-v[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2])+\
+                    (v[1:,2:]-v[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2]))
+            tau[1:,1:-1]-=2.0/3*mu*0.5*((v[1:,2:]-v[1:,:-2])/(dx[1:,1:-1]+dx[1:,:-2])+\
+                    (v[:-1,2:]-v[:-1,:-2])/(dx[:-1,1:-1]+dx[:-1,:-2]))
+            
+            tau[:-1,0]+=2.0/3*mu*0.5*((v[:-1,1]-v[:-1,0])/(dx[:-1,0])+\
+                    (v[1:,1]-v[1:,0])/(dx[1:,0]))
+            tau[1:,0]-=2.0/3*mu*0.5*((v[1:,1]-v[1:,0])/(dx[1:,0])+\
+                    (v[:-1,1]-v[:-1,0])/(dx[:-1,1:-1]+dx[:-1,0]))
         else:
-            tau[1:-1,1:-1]+=mu*((v[1:-1,1:-1]-v[1:-1,:-2])/(dx[1:-1,:-2])-\
-               0.5*((u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
-                    (u[2:,:-2]-u[:-2,:-2])/(dy[1:-1,:-2]+dy[:-2,:-2])))
-            tau[1:-1,1:-1]-=mu*((v[1:-1,2:]-v[1:-1,1:-1])/(dx[1:-1,1:-1])-\
-               0.5*((u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])+\
-                    (u[2:,2:]-u[:-2,2:])/(dy[1:-1,2:]+dy[:-2,2:])))
-            tau[1:-1,1:-1]*=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
-        
+            # d/dx terms
+            tau[:,:-1]+=mu*(v[:,1:]-v[:,:-1])/(dx[:,:-1])
+            tau[:,1:] -=mu*(v[:,1:]-v[:,:-1])/(dx[:,:-1])
+            # d/dy terms
+            tau[1:-1,:-1]+=mu*0.5*((u[2:,:-1]-u[:-2,:-1])/(dy[1:-1,:-1]+dy[:-2,:-1])+\
+                    (u[2:,1:]-u[:-2,1:])/(dy[1:-1,1:]+dy[:-2,1:]))
+            tau[1:-1,1:]-=mu*0.5*((v[2:,1:]-v[:-2,1:])/(dy[1:-1,1:]+dy[:-2,1:])+\
+                    (u[2:,:-1]-u[:-2,:-1])/(dy[1:-1,:-1]+dy[:-2,:-1]))
+            
+            tau[0,:-1]+=mu*0.5*((u[1,:-1]-u[0,:-1])/(dy[0,:-1])+\
+                    (u[1,1:]-u[0,1:])/(dy[0,1:]))
+            tau[0,1:]-=mu*0.5*((u[1,:-1]-u[0,:-1])/(dy[0,:-1])+\
+                    (u[1,1:]-u[0,1:])/(dy[0,1:]))
+            tau[-1,:-1]+=mu*0.5*((u[-1,:-1]-u[-2,:-1])/(dy[-1,:-1])+\
+                    (u[-1,1:]-u[-2,1:])/(dy[0,1:]))
+            tau[-1,1:]-=mu*0.5*((u[-1,:-1]-u[-2,:-1])/(dy[-1,:-1])+\
+                    (u[-1,1:]-u[-2,1:])/(dy[0,1:]))
         return tau
         
 #        # Central differences up to boundaries
@@ -770,6 +806,7 @@ class TwoDimPlanarSolve():
         rhou_c=rhou_0.copy()
         rhov_c=rhov_0.copy()
         rhoE_c=rhoE_0.copy()
+        Ax,Ay=self.Domain.CV_area()
                 
         if self.time_scheme=='Euler':
             rk_coeff = np.array([1,0])
@@ -818,16 +855,17 @@ class TwoDimPlanarSolve():
             # x-momentum (flux, pressure, shear stress, gravity)
             drhoudt[step] =self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
             drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), self.dx, self.dy)
-            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'11')
-            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'21')
-            drhoudt[step]+=rho_c*self.gx
+            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'11')*Ax
+            drhoudt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'21')*Ay
+            drhoudt[step]+=rho_c*self.gx*vol
             drhoudt[step]/=vol
     
             # y-momentum (flux, pressure, shear stress, gravity)
             drhovdt[step] =self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
             drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), self.dx, self.dy)
-            drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)
-            drhovdt[step]+=rho_c*self.gy
+            drhovdt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'12')*Ax
+            drhovdt[step]+=self.Calculate_Stress(u,v,self.dx,self.dy,'22')*Ay
+            drhovdt[step]+=rho_c*self.gy*vol
             drhovdt[step]/=vol
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
@@ -835,7 +873,7 @@ class TwoDimPlanarSolve():
             drhoEdt[step]+=self.compute_Flux(p, u, v, self.dx, self.dy)
             drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
-            drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)
+            drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)*vol
             drhoEdt[step]/=vol
 
             # Compute intermediate conservative values for RK stepping

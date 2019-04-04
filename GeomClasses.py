@@ -46,10 +46,6 @@ class TwoDimPlanar:
         self.isMeshed=False
         
         # Setup variable arrays
-        self.tau11=np.zeros((self.Ny, self.Nx)) # Shear stress arrays
-        self.tau12=np.zeros((self.Ny, self.Nx))
-        self.tau21=np.zeros((self.Ny, self.Nx))
-        self.tau22=np.zeros((self.Ny, self.Nx))
         self.rhoE=np.zeros((self.Ny, self.Nx)) # Conservative arrays
         self.rhou=np.zeros((self.Ny,self.Nx))
         self.rhov=np.zeros((self.Ny,self.Nx))
@@ -58,6 +54,10 @@ class TwoDimPlanar:
 #        self.u=np.zeros((self.Ny,self.Nx))
 #        self.v=np.zeros((self.Ny,self.Nx))
 #        self.p=np.zeros((self.Ny,self.Nx))
+        self.tau11=np.zeros((self.Ny, self.Nx)) # Shear stress arrays
+        self.tau12=np.zeros((self.Ny, self.Nx))
+#        self.tau21=np.zeros((self.Ny, self.Nx))
+        self.tau22=np.zeros((self.Ny, self.Nx))
         
         # Other useful calculations (put elsewhere??)
         self.Cv=self.R/(self.gamma-1)

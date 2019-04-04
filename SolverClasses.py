@@ -794,7 +794,7 @@ class TwoDimPlanarSolve():
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
             drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
             drhoEdt[step]+=self.compute_Flux(p, u, v, self.dx, self.dy)
-            drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy, Ax, Ay)
+            drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)*vol
             drhoEdt[step]/=vol

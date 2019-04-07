@@ -578,10 +578,12 @@ class TwoDimPlanarSolve():
             p[:,0]=self.BCs['bc_left_p']
             rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
-        # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_left_p']!='None':
-            p[:,0]=self.BCs['bc_left_p']
-            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
+        # Periodic boundary       
+        else:
+            rho[:,0] =rho[:,-1]
+            rhou[:,0]=rhou[:,-1]
+            rhov[:,0]=rhov[:,-1]
+            rhoE[:,0]=rhoE[:,-1]
         
         # Right face
         if self.BCs['bc_type_right']=='wall':
@@ -622,9 +624,11 @@ class TwoDimPlanarSolve():
             p[:,-1]=self.BCs['bc_right_p']
             rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
         
-        elif self.BCs['bc_right_p']!='None':
-            p[:,-1]=self.BCs['bc_right_p']
-            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
+        else:
+            rho[:,-1] =rho[:,0]
+            rhou[:,-1]=rhou[:,0]
+            rhov[:,-1]=rhov[:,0]
+            rhoE[:,-1]=rhoE[:,0]
             
         # South face
         if self.BCs['bc_type_south']=='wall':
@@ -661,10 +665,12 @@ class TwoDimPlanarSolve():
             p[0,:]=self.BCs['bc_south_p']
             rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
         
-        # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_south_p']!='None':
-            p[0,:]=self.BCs['bc_south_p']
-            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
+        # Periodic boundary       
+        else:
+            rho[0,:] =rho[-1,:]
+            rhou[0,:]=rhou[-1,:]
+            rhov[0,:]=rhov[-1,:]
+            rhoE[0,:]=rhoE[-1,:]
             
         # North face
         if self.BCs['bc_type_north']=='wall':
@@ -701,10 +707,12 @@ class TwoDimPlanarSolve():
             p[-1,:]=self.BCs['bc_north_p']
             rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
-        # Periodic boundary for Poiseuille flow        
-        elif self.BCs['bc_north_p']!='None':
-            p[-1,:]=self.BCs['bc_north_p']
-            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
+        # Periodic boundary       
+        else:
+            rho[-1,:] =rho[0,:]
+            rhou[-1,:]=rhou[0,:]
+            rhov[-1,:]=rhov[0,:]
+            rhoE[-1,:]=rhoE[0,:]
         
     # Main compressible solver (1 time step)
     def Advance_Soln(self, vol):

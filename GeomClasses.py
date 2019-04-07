@@ -136,7 +136,7 @@ class TwoDimPlanar:
     
     # Calculate and return volume of each node
     def CV_vol(self):
-        v=np.zeros_like(self.eta)
+        v=np.zeros_like(self.rho)
         dx,dy=np.meshgrid(self.dx, self.dy)
         v[1:-1,1:-1]=0.25*(dx[1:-1,1:-1]+dx[1:-1,:-2])*(dy[1:-1,1:-1]+dy[:-2,1:-1])
         v[0,0]      =0.25*(dx[0,0])*(dy[0,0])
@@ -151,8 +151,8 @@ class TwoDimPlanar:
     
     # Calculate and return area of faces at each node
     def CV_area(self):
-        Ax=np.zeros_like(self.E)
-        Ay=np.zeros_like(self.E)
+        Ax=np.zeros_like(self.rho)
+        Ay=np.zeros_like(self.rho)
         dx,dy=np.meshgrid(self.dx, self.dy)
         # Left/right face areas
         Ax[1:-1,1:-1]=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])

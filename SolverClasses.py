@@ -143,7 +143,7 @@ class TwoDimPlanarSolve():
     # Flux of conservative variables
     # Calculates for entire domain and accounts for periodicity
     # Can be hacked to solve gradients setting rho to variable and u or v to zeros
-    def compute_Flux(self, rho, u, v, dx, dy):
+    def compute_Flux(self, rho, u, v, Ax, Ay, dx, dy):
         ddx=np.zeros_like(u)
         ddy=np.zeros_like(v)
 #        rhou=rho*u
@@ -151,45 +151,33 @@ class TwoDimPlanarSolve():
         
         # Flux across left/right faces
         ddx[1:-1,1:]  =0.5*(rho[1:-1,1:]+rho[1:-1,:-1])\
-                *0.5*(dy[1:-1,1:]+dy[:-2,1:])\
-                *0.5*(u[1:-1,1:]+u[1:-1,:-1])
+                *Ax[1:-1,1:]*0.5*(u[1:-1,1:]+u[1:-1,:-1])
         ddx[1:-1,:-1]-=0.5*(rho[1:-1,:-1]+rho[1:-1,1:])\
-                *0.5*(dy[1:-1,:-1]+dy[:-2,:-1])\
-                *0.5*(u[1:-1,:-1]+u[1:-1,1:])
+                *Ax[1:-1,:-1]*0.5*(u[1:-1,:-1]+u[1:-1,1:])
             # North/south boundaries
         ddx[0,1:]   =0.5*(rho[0,1:]+rho[0,:-1])\
-                *0.5*(dy[0,1:])\
-                *0.5*(u[0,1:]+u[0,:-1])
+                *Ax[0,1:]*0.5*(u[0,1:]+u[0,:-1])
         ddx[0,:-1] -=0.5*(rho[0,:-1]+rho[0,1:])\
-                *0.5*(dy[0,:-1])\
-                *0.5*(u[0,:-1]+u[0,1:])
+                *Ax[0,:-1]*0.5*(u[0,:-1]+u[0,1:])
         ddx[-1,1:]  =0.5*(rho[-1,1:]+rho[1,:-1])\
-                *0.5*(dy[-1,1:])\
-                *0.5*(u[-1,1:]+u[-1,:-1])
+                *Ax[-1,1:]*0.5*(u[-1,1:]+u[-1,:-1])
         ddx[-1,:-1]-=0.5*(rho[-1,:-1]+rho[1,1:])\
-                *0.5*(dy[-1,:-1])\
-                *0.5*(u[-1,:-1]+u[-1,1:])
+                *Ax[-1,:-1]*0.5*(u[-1,:-1]+u[-1,1:])
         
         # Flux across top/bottom faces
         ddy[1:,1:-1]  =0.5*(rho[1:,1:-1]+rho[:-1,1:-1])\
-                *0.5*(dx[1:,1:-1]+dx[1:,:-2])\
-                *0.5*(v[1:,1:-1]+v[:-1,1:-1])
+                *Ay[1:,1:-1]*0.5*(v[1:,1:-1]+v[:-1,1:-1])
         ddy[:-1,1:-1]-=0.5*(rho[:-1,1:-1]+rho[1:,1:-1])\
-                *0.5*(dx[:-1,1:-1]+dx[:-1,:-2])\
-                *0.5*(v[:-1,1:-1]+v[1:,1:-1])
+                *Ay[:-1,1:-1]*0.5*(v[:-1,1:-1]+v[1:,1:-1])
             # East/west boundaries
         ddy[1:,0]   =0.5*(rho[1:,0]+rho[:-1,0])\
-                *0.5*(dx[1:,0])\
-                *0.5*(v[1:,0]+v[:-1,0])
+                *Ay[1:,0]*0.5*(v[1:,0]+v[:-1,0])
         ddy[:-1,0] -=0.5*(rho[:-1,0]+rho[1:,0])\
-                *0.5*(dx[:-1,0])\
-                *0.5*(v[:-1,0]+v[1:,0])
+                *Ay[:-1,0]*0.5*(v[:-1,0]+v[1:,0])
         ddy[1:,-1]  =0.5*(rho[1:,-1]+rho[:-1,-1])\
-                *0.5*(dx[1:,-1])\
-                *0.5*(v[1:,-1]+v[:-1,-1])
+                *Ay[1:,-1]*0.5*(v[1:,-1]+v[:-1,-1])
         ddy[:-1,-1]-=0.5*(rho[:-1,-1]+rho[1:,-1])\
-                *0.5*(dx[:-1,-1])\
-                *0.5*(v[:-1,-1]+v[1:,-1])
+                *Ay[:-1,-1]*0.5*(v[:-1,-1]+v[1:,-1])
         
         
 #        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
@@ -212,17 +200,16 @@ class TwoDimPlanarSolve():
     # Shear stress calculation
     def Calculate_Stress(self, u, v, dx, dy):
         mu=self.Domain.mu
-	   # Central differences up to boundaries
-       self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
+	# Central differences up to boundaries
+        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
            (v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-       self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
+        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
            (u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-       self.Domain.tau21[1:-1,1:-1]
-       self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
+        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
            (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
        
-       # Boundary treatments dependent on periodicity
-       if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+        # Boundary treatments dependent on periodicity
+        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
            # North and south boundary values
            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
@@ -282,7 +269,7 @@ class TwoDimPlanarSolve():
                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
            
            
-       elif (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+        elif (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
            # Left/right boundaries
            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])-\
                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
@@ -341,8 +328,8 @@ class TwoDimPlanarSolve():
            self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
                             (u[-1,0]-u[-1,-2])/(dx[-1,-1]+dx[-1,-2]))
        
-       # No periodicity
-       else:
+        # No periodicity
+        else:
            # North and south boundary values
            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
@@ -422,14 +409,14 @@ class TwoDimPlanarSolve():
                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
         
     # Work via control surface calculation (grad*(sigma*v))
-    def Source_CSWork(self, u, v, dx, dy):
+    def Source_CSWork(self, u, v, Ax, Ay, dx, dy):
         tau11u=self.Domain.tau11*u
-		tau12u=self.Domain.tau12*u
-		tau21v=self.Domain.tau12*v
-		tau22v=self.Domain.tau22*v
+	tau12u=self.Domain.tau12*u
+	tau21v=self.Domain.tau12*v
+	tau22v=self.Domain.tau22*v
 		
-		work =self.compute_Flux(1.0, tau11u, tau12u, dx, dy)
-		work+=self.compute_Flux(1.0, tau21v, tau22v, dx, dy)
+	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, Ax, Ay, dx, dy)
+	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, Ax, Ay, dx, dy)
         return work
     
     # Heat conduction gradient source term
@@ -771,30 +758,30 @@ class TwoDimPlanarSolve():
             # Compute time deriviatives of conservatives (2nd order central schemes)
             ###################################################################
             # Calculate stress
-			self.Calculate_Stress(u, v, self.dx, self.dy)
+	    self.Calculate_Stress(u, v, self.dx, self.dy)
 			
             # Density
-            drhodt[step] =self.compute_Flux(rho_c, u, v, self.dx, self.dy)
+            drhodt[step] =self.compute_Flux(rho_c, u, v, Ax, Ay, self.dx, self.dy)
             drhodt[step]/=vol
             
             # x-momentum (flux, pressure, shear stress, gravity)
-            drhoudt[step] =self.compute_Flux(rhou_c, u, v, self.dx, self.dy)
-            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), self.dx, self.dy)
-            drhoudt[step]+=self.compute_Flux(1.0, self.Domain.tau11, self.Domain.tau12, self.dx, self.dy)*vol
+            drhoudt[step] =self.compute_Flux(rhou_c, u, v, Ax, Ay, self.dx, self.dy)
+            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), Ax, Ay, self.dx, self.dy)
+            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, Ax, Ay, self.dx, self.dy)
             drhoudt[step]+=rho_c*self.gx*vol
             drhoudt[step]/=vol
     
             # y-momentum (flux, pressure, shear stress, gravity)
-            drhovdt[step] =self.compute_Flux(rhov_c, u, v, self.dx, self.dy)
-            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), self.dx, self.dy)
-            drhovdt[step]+=self.compute_Flux(1.0, self.Domain.tau12, self.Domain.tau22, self.dx, self.dy)*vol
+            drhovdt[step] =self.compute_Flux(rhov_c, u, v, Ax, Ay, self.dx, self.dy)
+            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), Ax, Ay, self.dx, self.dy)
+            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, Ax, Ay, self.dx, self.dy)
             drhovdt[step]+=rho_c*self.gy*vol
             drhovdt[step]/=vol
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
-            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, self.dx, self.dy)
-            drhoEdt[step]+=self.compute_Flux(p, u, v, self.dx, self.dy)
-            drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy)
+            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, Ax, Ay, self.dx, self.dy)
+            drhoEdt[step]+=self.compute_Flux(p, u, v, Ax, Ay, self.dx, self.dy)
+            drhoEdt[step]+=self.Source_CSWork(u, v, Ax, Ay, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)*vol
             drhoEdt[step]/=vol

@@ -863,17 +863,18 @@ class TwoDimPlanarSolve():
         # Divergence check
         ###################################################################
         
-        if (np.amin(self.Domain.rho)<=0) or \
-            (np.isnan(np.amax(self.Domain.rhou))) or \
-            (np.isnan(np.amax(self.Domain.rhov))) or \
-            (np.amax(self.Domain.rhoE)<=0):
-            print '**************Divergence detected****************'
+        if (np.amin(self.Domain.rho)<=0) or (np.isnan(np.amax(self.Domain.rho))):
+            print '********* Divergence detected - Density **********'
             return 1, dt
+        elif (np.isnan(np.amax(self.Domain.rhou))):
+            print '********* Divergence detected - x-momentum ********'
+            return 2, dt
+        elif (np.isnan(np.amax(self.Domain.rhov))):
+            print '********* Divergence detected - y-momentum ********'
+            return 3, dt
+        elif (np.amax(self.Domain.rhoE)<=0):
+            print '********* Divergence detected - Energy **********'
+            return 4, dt
+        else:
+            return 0, dt
         
-        ###################################################################
-        # Output data to file?????
-        ###################################################################
-        
-        
-        
-        return 0, dt

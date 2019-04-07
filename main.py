@@ -298,7 +298,7 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
 #for nt in range(settings['total_time_steps']):
     err,dt=solver.Advance_Soln(vol)
     print 'Time step %i, Step size=%.6f, Time elapsed=%f;'%(nt+1,dt, t)
-    if err==1:
+    if err>0:
         print '#################### Solver aborted #######################'
         print 'Saving data to numpy array files...'
         save_data(domain, '{:f}'.format(t))

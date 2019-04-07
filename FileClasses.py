@@ -14,8 +14,8 @@ import string as st
 # Global declarations of data stored in files
 keys_Settings=['Length','Width','Nodes_x','Nodes_y','Fluid','k','gamma','R','mu',\
                'Gravity_x','Gravity_y', 'bias_type_x', 'bias_size_x','bias_type_y','bias_size_y']
-keys_Time_adv=['CFL','total_time_steps', 'total_time', 'Time_Scheme','Number_Data_Output',\
-               'Output_directory']
+keys_Time_adv=['CFL','total_time_steps', 'total_time', 'Time_Scheme','Number_Data_Output']
+
 keys_BCs=     ['bc_type_left', 'bc_left_u', 'bc_left_v', 'bc_left_p', 'bc_left_T',\
               'bc_type_right','bc_right_u','bc_right_v','bc_right_p','bc_right_T',\
               'bc_type_south','bc_south_u','bc_south_v','bc_south_p','bc_south_T',\
@@ -45,13 +45,12 @@ class FileOut():
         self.Write_single_line('############### '+title+' FILE #########################')
         self.Write_single_line('##########'+self.name+'##################\n')
     
-    def input_writer(self, settings, BCs, rho, rhou, rhov, rhoE):
+    def input_writer(self, settings, BCs):
         self.Write_single_line('Settings:')
         for i in keys_Settings:
             self.fout.write(i)
             self.fout.write(':')
             self.Write_single_line(str(settings[i]))
-#            self.fout.write('\n')
         
 #        self.Write_single_line('\nMeshing details:')
 #        keys=['bias_type_x','bias_size_x','bias_type_y','bias_size_y']
@@ -66,36 +65,29 @@ class FileOut():
             self.fout.write(i)
             self.fout.write(':')
             self.Write_single_line(str(settings[i]))
-#            self.fout.write('\n')
         
         self.Write_single_line('\nBoundary conditions:')
         for i in keys_BCs:
             self.fout.write(i)
             self.fout.write(':')
             self.Write_single_line(str(BCs[i]))
-#            self.fout.write('\n')
         
-        self.fout.write('\nInitial conditions:\n')
-        self.Write_single_line('rho')
-        for i in range(len(rho[:,0])):
-            self.Write_single_line(str(rho[i,:]))
-        self.Write_single_line('rhou')
-        for i in range(len(rho[:,0])):
-            self.Write_single_line(str(rhou[i,:]))
-        self.Write_single_line('rhov')
-        for i in range(len(rho[:,0])):
-            self.Write_single_line(str(rhov[i,:]))
-        self.Write_single_line('rhoE')
-        for i in range(len(rho[:,0])):
-            self.Write_single_line(str(rhoE[i,:]))
+#        self.fout.write('\nInitial conditions:\n')
+#        self.Write_single_line('rho')
+#        for i in range(len(rho[:,0])):
+#            self.Write_single_line(str(rho[i,:]))
+#        self.Write_single_line('rhou')
+#        for i in range(len(rho[:,0])):
+#            self.Write_single_line(str(rhou[i,:]))
+#        self.Write_single_line('rhov')
+#        for i in range(len(rho[:,0])):
+#            self.Write_single_line(str(rhov[i,:]))
+#        self.Write_single_line('rhoE')
+#        for i in range(len(rho[:,0])):
+#            self.Write_single_line(str(rhoE[i,:]))
 
         self.fout.write('\n')
         
-    def Write_timestep_data(self, timeStep, dt):
-        self.fout.write('Time step: '+timeStep+'\n')
-        self.fout.write('Time step size: '+dt+'\n\n')
-        
-    
     def close(self):
         self.fout.close()
         

@@ -126,7 +126,8 @@ from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import datetime
 import os
-#import sys
+import sys
+import time
 #import CoolProp.CoolProp as CP
 
 #from GeomClasses import OneDimLine as OneDimLine
@@ -155,25 +156,36 @@ print('#              Created by J. Mark Epps               #')
 print('#          Part of Masters Thesis at UW 2018-2020    #')
 print('######################################################\n')
 
+# Start timer
+time_begin=time.time()
+settings={}
+BCs={}
+inputargs=sys.argv
+if len(inputargs)>2:
+    input_file=inputargs[1]
+    settings['Output_directory']=inputargs[2]
+else:
+    print 'Usage is: python main.py [Input file] [Output directory]\n'
+    print 'where\n'
+    print '[Input file] is the name of the input file with extension; must be in current directory'
+    print '[Output directory] is the directory to output the data; will create relative to current directory if it does not exist'
+    print '***********************************'
+    sys.exit('Solver not started')
 ##########################################################################
 # -------------------------------------Read input file
 ##########################################################################
 print 'Reading input file...'
-settings={}
-BCs={}
 fin=FileClasses.FileIn('Input_File', 0)
 fin.Read_Input(settings, BCs)
-os.chdir(settings['Output_directory'])
-datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(datetime.now()))
-
+try:
+    os.chdir(settings['Output_directory'])
+except:
+    os.makedirs(settings['Output_directory'])
+    os.chdir(settings['Output_directory'])
 print '################################'
 
 # Initial conditions from previous run/already in memory
 Use_inital_values                   = False
-
-##########################################################################
-# -------------------------------------Initialize solver and domain
-##########################################################################
 
 print 'Initializing geometry package...'
 # Calculate fluid properties based on fluid from input file [IN PROGRESS]
@@ -192,6 +204,10 @@ print 'Initializing geometry package...'
 domain=TwoDimPlanar(settings)
 domain.mesh()
 print '################################'
+
+##########################################################################
+# -------------------------------------Initialize solver and domain
+##########################################################################
 
 print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
@@ -239,6 +255,23 @@ solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
 #domain.rhov[25:35,25:35]=domain.rho[25:35,25:35]*v[25:35,25:35]
 #domain.rhoE[25:35,25:35]=domain.rho[25:35,25:35]*0.5*(u[25:35,25:35]**2+v[25:35,25:35]**2+2*domain.Cv*T[25:35,25:35])
 
+##########################################################################
+# ------------------------Write Input File settings to output directory
+##########################################################################
+print 'Saving input file to output directory...'
+#datTime=str(datetime.date(datetime.now()))+'_'+'{:%H%M}'.format(datetime.time(datetime.now()))
+isBinFile=False
+
+input_file=FileClasses.FileOut('Input_file', isBinFile)
+
+# Write header to file
+input_file.header('INPUT')
+
+# Write input file with settings
+input_file.input_writer(settings, BCs)
+input_file.close()
+print '################################\n'
+
 # save initial values for first data files
 print 'Saving data to numpy array files...'
 save_data(domain, '0.000000')
@@ -278,10 +311,11 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
         (output_data_t!=0 and (t>=output_data_t*t_inc and t-dt<output_data_t*t_inc)):
         print 'Saving data to numpy array files...'
         save_data(domain, '{:f}'.format(t))
-        
+        t_inc+=1
     
 #output_file.close()
-
+time_end=time.time()
+print 'Solver time per 1000 time steps: %f min'%((time_end-time_begin)/60.0*1000/nt)
 ##########################################################################
 # ------------------------------------Post-processing
 ##########################################################################

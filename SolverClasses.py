@@ -568,7 +568,7 @@ class TwoDimPlanarSolve():
 #                 **((self.Domain.gamma-1)/self.Domain.gamma)
 
 #            p[:,0]=rho[:,0]*self.Domain.R*T[:,0]
-            
+            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
             rhou[:,0]=rho[:,0]*u[:,0]
             rhov[:,0]=rho[:,0]*v[:,0]
 #            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
@@ -613,8 +613,8 @@ class TwoDimPlanarSolve():
             v[:,-1]  =self.BCs['bc_right_v']
             T[:,-1]  =self.BCs['bc_right_T']
             p[:,-1]  =self.BCs['bc_right_p']
-#            rho[:,-1]=p[:,-1]/self.Domain.R/T[:,-1]
             
+            rho[:,-1]=p[:,-1]/self.Domain.R/T[:,-1]
             rhou[:,-1]=rho[:,-1]*u[:,-1]
             rhov[:,-1]=rho[:,-1]*v[:,-1]
 #            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
@@ -654,8 +654,8 @@ class TwoDimPlanarSolve():
             v[0,:]  =self.BCs['bc_south_v']
             T[0,:]  =self.BCs['bc_south_T']
             p[0,:]  =self.BCs['bc_south_p']
-#            rho[0,:]=p[0,:]/self.Domain.R/T[0,:]
             
+            rho[0,:]=p[0,:]/self.Domain.R/T[0,:]
             rhou[0,:]=rho[0,:]*u[0,:]
             rhov[0,:]=rho[0,:]*v[0,:]
 #            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
@@ -696,8 +696,8 @@ class TwoDimPlanarSolve():
             v[-1,:]  =self.BCs['bc_north_v']
             T[-1,:]  =self.BCs['bc_north_T']
             p[-1,:]  =self.BCs['bc_north_p']
-#            rho[-1,:]=p[-1,:]/self.Domain.R/T[-1,:]
             
+            rho[-1,:]=p[-1,:]/self.Domain.R/T[-1,:]
             rhou[-1,:]=rho[-1,:]*u[-1,:]
             rhov[-1,:]=rho[-1,:]*v[-1,:]
 #            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)

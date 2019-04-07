@@ -17,8 +17,8 @@
 #	Fluid must be in CoolProp library to calculate k, gamma, R and mu [IN PROGRESS]
 ######################################################
 
-Length:3.0
-Width:3.0
+Length:0.01
+Width:1e-3
 Nodes_x:125
 Nodes_y:125
 Fluid:Air
@@ -47,47 +47,45 @@ bias_size_y:0.0005
 #	Number_Data_Output: Number of conservative variable files to be output over the time/number of steps specified
 ######################################################
 
-CFL:0.9
-total_time_steps:100
+CFL:0.4
+total_time_steps:3
 total_time:None
 Time_Scheme:RK2
 Number_Data_Output:1
-#Output_directory:C:\Users\mepps\Documents\Research\2D_compressible_NS\Tests
-Output_directory:C:\Users\Joseph\Documents\School\Research\2D_Comp_NS\Tests\1
 
 ######################################################
 #			Boundary conditions
 #	'periodic': no properties need to be specified
-#	'periodic': specify pressure, is poiseuille flow
 #	'wall': specify T, ('grad',[value]); no slip and dp=0 enforced implicitly
 #	'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
 #	'outlet': specify pressure; rest is calculated from interior points
-#	'inlet': [IN PROGRESS] specify velocities, temperature and pressure
+#	'inlet': specify velocities, temperature and pressure
 #  [IN PROGRESS] Profiles possible; must be same size as number of nodes on that boundary
 # grad,[value] enforces a gradient normal to boundary (heat flux on walls); applied to q_i term in N-S
 ######################################################
 
-bc_type_left:wall
-bc_left_u:None
-bc_left_v:None
-bc_left_p:101325
+bc_type_left:inlet
+bc_left_u:5.0
+bc_left_v:0
+bc_left_p:202650
 bc_left_T:300
 
-bc_type_right:wall
+bc_type_right:outlet
+#bc_type_right:wall
 bc_right_u:None
 bc_right_v:None
 bc_right_p:101325
-bc_right_T:600
+bc_right_T:300
 
 bc_type_south:wall
 bc_south_u:None
 bc_south_v:None
 bc_south_p:101325
-bc_south_T:300
+bc_south_T:600
 
 bc_type_north:wall
 bc_north_u:None
 bc_north_v:None
 bc_north_p:101325
-bc_north_T:300
+bc_north_T:600
 

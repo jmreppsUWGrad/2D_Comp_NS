@@ -48,7 +48,7 @@ bias_size_y:0.0005
 ######################################################
 
 CFL:0.4
-total_time_steps:3
+total_time_steps:10
 total_time:None
 Time_Scheme:RK2
 Number_Data_Output:1

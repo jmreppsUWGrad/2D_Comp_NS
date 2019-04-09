@@ -52,7 +52,7 @@ class TwoDimPlanarSolve():
         lam2=u
         lam3=v
         lam4=max(np.amax(u+c),np.amax(v+c))
-        return lam1, np.amax(lam2), np.amax(lam3), lam4
+        return max(lam1,0), np.amax(lam2), np.amax(lam3), lam4
     
     # Time step check with dx, dy, T and CFL number
     def getdt(self, lam1, lam2, lam3, lam4, T):
@@ -578,14 +578,13 @@ class TwoDimPlanarSolve():
         
         u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
         lam1,lam2,lam3,lam4=self.eigenval(u,v,T)
-        print(lam1,lam2,lam3,lam4)
         dt=self.getdt(lam1,lam2,lam3,lam4,T)
         if (np.isnan(dt)) or (dt<=0):
 #            print '    Time step size: %f'%dt
             print '*********Diverging time step***********'
             return 1, dt
 #        print '    Time step size: %.6f'%dt
-        
+        lam1,lam2,lam3,lam4=0,0,0,0 # If not using eigenvalues for flux
         for step in range(Nstep):
             ###################################################################
             # Compute primitive variables

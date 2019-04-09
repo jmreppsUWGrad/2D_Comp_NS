@@ -25,7 +25,7 @@ p/pt=(1+(gamma-1)/2*Ma**2)**(-gamma/(gamma-1))
 """
 
 import numpy as np
-#import GeomClasses
+import BCClasses
 #import MatClasses
 #import CoolProp.CoolProp as CP
 import temporal_schemes
@@ -41,12 +41,22 @@ class TwoDimPlanarSolve():
         self.gx=settings['Gravity_x']
         self.gy=settings['Gravity_y']
         self.dx,self.dy=np.meshgrid(geom_obj.dx,geom_obj.dy)
-        self.BCs=BCs
+        
+        # BC class
+        self.BCs=BCClasses.BCs(settings, BCs, self.dx, self.dy)
+    
+    # Get eigenvalues of current time step
+    def eigenval(self, u, v, T):
+        c=np.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
+        lam1=max(np.amax(u-c),np.amax(v-c))
+        lam2=u
+        lam3=v
+        lam4=max(np.amax(u+c),np.amax(v+c))
+        return lam1, np.amax(lam2), np.amax(lam3), lam4
     
     # Time step check with dx, dy, T and CFL number
-    def getdt(self, T):
+    def getdt(self, lam1, lam2, lam3, lam4, T):
 #        dx=np.sqrt(self.dx**2+self.dy**2)
-        
         dx=np.zeros_like(self.dx)
         dx[1:-1,1:-1]=0.5*np.sqrt((self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])**2+\
                   (self.dy[1:-1,1:-1]+self.dy[:-2,1:-1])**2)
@@ -63,9 +73,9 @@ class TwoDimPlanarSolve():
                   self.dy[:-2,-1])**2)
         dx[-1,-1]    =0.5*np.sqrt((self.dx[-1,-1])**2+(self.dy[-1,-1])**2)
 #        print(dx)
-        c=np.sqrt(self.Domain.gamma*self.Domain.R*T) # ADD SPEED OF SOUND RETRIEVAL
+        
 #        print(c)
-        return np.amin(self.CFL*dx/(c))
+        return np.amin(self.CFL*dx/(max(lam1,lam2,lam3,lam4)))
     
     # Interpolation function (become flux function?)
     def interpolate(self, k1, k2, func):
@@ -143,51 +153,51 @@ class TwoDimPlanarSolve():
     # Flux of conservative variables
     # Calculates for entire domain and accounts for periodicity
     # Can be hacked to solve gradients setting rho to variable and u or v to zeros
-    def compute_Flux(self, rho, u, v, Ax, Ay, dx, dy):
+    def compute_Flux(self, rho, u, v, Ax, Ay, dx, dy, lam):
         ddx=np.zeros_like(u)
         ddy=np.zeros_like(v)
 #        rhou=rho*u
 #        rhov=rho*v
         
         # Flux across left/right faces
-        ddx[1:-1,1:]  =0.5*(rho[1:-1,1:]+rho[1:-1,:-1])\
-                *Ax[1:-1,1:]*0.5*(u[1:-1,1:]+u[1:-1,:-1])
-        ddx[1:-1,:-1]-=0.5*(rho[1:-1,:-1]+rho[1:-1,1:])\
-                *Ax[1:-1,:-1]*0.5*(u[1:-1,:-1]+u[1:-1,1:])
+        ddx[1:-1,1:]  =Ax[1:-1,1:]*0.5*(rho[1:-1,1:]*u[1:-1,1:]+\
+               rho[1:-1,:-1]*u[1:-1,:-1]-lam*(u[1:-1,1:]-u[1:-1,:-1]))
+        ddx[1:-1,:-1]-=Ax[1:-1,:-1]*0.5*(rho[1:-1,:-1]*u[1:-1,:-1]+\
+               rho[1:-1,1:]*u[1:-1,1:]-lam*(u[1:-1,1:]-u[1:-1,:-1]))
             # North/south boundaries
-        ddx[0,1:]   =0.5*(rho[0,1:]+rho[0,:-1])\
-                *Ax[0,1:]*0.5*(u[0,1:]+u[0,:-1])
-        ddx[0,:-1] -=0.5*(rho[0,:-1]+rho[0,1:])\
-                *Ax[0,:-1]*0.5*(u[0,:-1]+u[0,1:])
-        ddx[-1,1:]  =0.5*(rho[-1,1:]+rho[1,:-1])\
-                *Ax[-1,1:]*0.5*(u[-1,1:]+u[-1,:-1])
-        ddx[-1,:-1]-=0.5*(rho[-1,:-1]+rho[1,1:])\
-                *Ax[-1,:-1]*0.5*(u[-1,:-1]+u[-1,1:])
+        ddx[0,1:]   =Ax[0,1:]*0.5*(rho[0,1:]*u[0,1:]+rho[0,:-1]*u[0,:-1]\
+               -lam*(u[0,1:]-u[0,:-1]))
+        ddx[0,:-1] -=Ax[0,:-1]*0.5*(rho[0,:-1]*u[0,:-1]+rho[0,1:]*u[0,1:]\
+               -lam*(u[0,1:]-u[0,:-1]))
+        ddx[-1,1:]  =Ax[-1,1:]*0.5*(rho[-1,1:]*u[-1,1:]+rho[1,:-1]*u[-1,:-1]\
+               -lam*(u[-1,1:]-u[-1,:-1]))
+        ddx[-1,:-1]-=Ax[-1,:-1]*0.5*(rho[-1,:-1]*u[-1,:-1]+rho[1,1:]*u[-1,1:]\
+               -lam*(u[-1,1:]-u[-1,:-1]))
         
         # Flux across top/bottom faces
-        ddy[1:,1:-1]  =0.5*(rho[1:,1:-1]+rho[:-1,1:-1])\
-                *Ay[1:,1:-1]*0.5*(v[1:,1:-1]+v[:-1,1:-1])
-        ddy[:-1,1:-1]-=0.5*(rho[:-1,1:-1]+rho[1:,1:-1])\
-                *Ay[:-1,1:-1]*0.5*(v[:-1,1:-1]+v[1:,1:-1])
+        ddy[1:,1:-1]  =Ay[1:,1:-1]*0.5*(rho[1:,1:-1]*v[1:,1:-1]+\
+               rho[:-1,1:-1]*v[:-1,1:-1]-lam*(v[1:,1:-1]-v[:-1,1:-1]))
+        ddy[:-1,1:-1]-=Ay[:-1,1:-1]*0.5*(rho[:-1,1:-1]*v[:-1,1:-1]+\
+               rho[1:,1:-1]*v[1:,1:-1]-lam*(v[1:,1:-1]-v[:-1,1:-1]))
             # East/west boundaries
-        ddy[1:,0]   =0.5*(rho[1:,0]+rho[:-1,0])\
-                *Ay[1:,0]*0.5*(v[1:,0]+v[:-1,0])
-        ddy[:-1,0] -=0.5*(rho[:-1,0]+rho[1:,0])\
-                *Ay[:-1,0]*0.5*(v[:-1,0]+v[1:,0])
-        ddy[1:,-1]  =0.5*(rho[1:,-1]+rho[:-1,-1])\
-                *Ay[1:,-1]*0.5*(v[1:,-1]+v[:-1,-1])
-        ddy[:-1,-1]-=0.5*(rho[:-1,-1]+rho[1:,-1])\
-                *Ay[:-1,-1]*0.5*(v[:-1,-1]+v[1:,-1])
+        ddy[1:,0]   =Ay[1:,0]*0.5*(rho[1:,0]*v[1:,0]+rho[:-1,0]*v[:-1,0]\
+               -lam*(v[1:,0]-v[:-1,0]))
+        ddy[:-1,0] -=Ay[:-1,0]*0.5*(rho[:-1,0]*v[:-1,0]+rho[1:,0]*v[1:,0]\
+               -lam*(v[1:,0]-v[:-1,0]))
+        ddy[1:,-1]  =Ay[1:,-1]*0.5*(rho[1:,-1]*v[1:,-1]+rho[:-1,-1]*v[:-1,-1]\
+               -lam*(v[1:,-1]-v[:-1,-1]))
+        ddy[:-1,-1]-=Ay[:-1,-1]*0.5*(rho[:-1,-1]*v[:-1,-1]+rho[1:,-1]*v[1:,-1]\
+               -lam*(v[1:,-1]-v[:-1,-1]))
         
         
-#        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+#        if (self.BCs.BCs['bc_type_left']=='periodic') or (self.BCs.BCs['bc_type_right']=='periodic'):
 #            ddx[:,0] =(rhou[:,1]-rhou[:,-1])/(dx[:,0]+dx[:,-1])
 #            ddx[:,-1]=(rhou[:,0]-rhou[:,-2])/(dx[:,-1]+dx[:,0])
 #        else:
 #            # Forward/backward differences for boundaries
 #            ddx[:,0] =(rhou[:,1]-rhou[:,0])/(dx[:,0])
 #            ddx[:,-1]=(rhou[:,-1]-rhou[:,-2])/(dx[:,-1])
-#        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+#        if (self.BCs.BCs['bc_type_north']=='periodic') or (self.BCs.BCs['bc_type_south']=='periodic'):
 #            ddy[0,:] =(rhov[1,:]-rhov[-1,:])/(dy[0,:]+dy[-1,:])
 #            ddy[-1,:]=(rhov[0,:]-rhov[-2,:])/(dy[-1,:]+dy[0,:])
 #        else:
@@ -209,7 +219,7 @@ class TwoDimPlanarSolve():
            (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
        
         # Boundary treatments dependent on periodicity
-        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+        if (self.BCs.BCs['bc_type_north']=='periodic') or (self.BCs.BCs['bc_type_south']=='periodic'):
            # North and south boundary values
            self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
                             (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
@@ -269,7 +279,7 @@ class TwoDimPlanarSolve():
                             (u[-1,-1]-u[-1,-2])/dx[-1,-1])
            
            
-        elif (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):
+        elif (self.BCs.BCs['bc_type_left']=='periodic') or (self.BCs.BCs['bc_type_right']=='periodic'):
            # Left/right boundaries
            self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,-1])/(dx[1:-1,0]+dx[1:-1,-1])-\
                             (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
@@ -336,16 +346,16 @@ class TwoDimPlanarSolve():
            self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
                             (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
            
-           if self.BCs['bc_type_south']=='outlet':
+           if self.BCs.BCs['bc_type_south']=='outlet':
                self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
-           elif self.BCs['bc_type_south']=='slip_wall':
+           elif self.BCs.BCs['bc_type_south']=='slip_wall':
                self.Domain.tau12[0,1:-1] =0
            else:
                self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
                             (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
-           if self.BCs['bc_type_north']=='outlet':
+           if self.BCs.BCs['bc_type_north']=='outlet':
                self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
-           elif self.BCs['bc_type_north']=='slip_wall':
+           elif self.BCs.BCs['bc_type_north']=='slip_wall':
                self.Domain.tau12[-1,1:-1]=0
            else:
                self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
@@ -361,16 +371,16 @@ class TwoDimPlanarSolve():
            self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
                             (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
            
-           if self.BCs['bc_type_left']=='outlet':
+           if self.BCs.BCs['bc_type_left']=='outlet':
                self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
-           elif self.BCs['bc_type_left']=='slip_wall':
+           elif self.BCs.BCs['bc_type_left']=='slip_wall':
                self.Domain.tau12[1:-1,0] =0
            else:
                self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
                                 (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-           if self.BCs['bc_type_right']=='outlet':
+           if self.BCs.BCs['bc_type_right']=='outlet':
                self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
-           elif self.BCs['bc_type_right']=='slip_wall':
+           elif self.BCs.BCs['bc_type_right']=='slip_wall':
                self.Domain.tau12[1:-1,-1]=0
            else:
                self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
@@ -415,8 +425,8 @@ class TwoDimPlanarSolve():
 	tau21v=self.Domain.tau12*v
 	tau22v=self.Domain.tau22*v
 		
-	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, Ax, Ay, dx, dy)
-	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, Ax, Ay, dx, dy)
+	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, Ax, Ay, dx, dy, 0)
+	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, Ax, Ay, dx, dy, 0)
         return work
     
     # Heat conduction gradient source term
@@ -495,36 +505,36 @@ class TwoDimPlanarSolve():
         qx         -= (aW+aE+aS+aN)*T
         
         # Apply boundary conditions on heat flux
-#        if (self.BCs['bc_type_left']=='periodic') or (self.BCs['bc_type_right']=='periodic'):        
+#        if (self.BCs.BCs['bc_type_left']=='periodic') or (self.BCs.BCs['bc_type_right']=='periodic'):        
 #            qx[:,0] =-k*(T[:,1]-T[:,-1])/(dx[:,0]+dx[:,-1])
 #            qx[:,-1]=-k*(T[:,0]-T[:,-2])/(dx[:,-1]+dx[:,-2])
-        if self.BCs['bc_type_left']=='outlet':
+        if self.BCs.BCs['bc_type_left']=='outlet':
             qx[:,0] -=aE[:,0]*(T[:,1]-T[:,0]) # Effect is 0 flux in x
             
-#        elif type(self.BCs['bc_left_T']) is tuple:
-#            qx[:,0] =self.BCs['bc_left_T'][1]
+#        elif type(self.BCs.BCs['bc_left_T']) is tuple:
+#            qx[:,0] =self.BCs.BCs['bc_left_T'][1]
 #            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
-        if self.BCs['bc_type_right']=='outlet':
+        if self.BCs.BCs['bc_type_right']=='outlet':
             qx[:,-1]-=aW[:,-1]*(T[:,-1]-T[:,-2])
-#        elif type(self.BCs['bc_right_T']) is tuple:
+#        elif type(self.BCs.BCs['bc_right_T']) is tuple:
 #            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
-#            qx[:,-1]=self.BCs['bc_right_T'][1]
+#            qx[:,-1]=self.BCs.BCs['bc_right_T'][1]
 #        else:
 #            qx[:,0] =-k*(T[:,1]-T[:,0])/dx[:,0]
 #            qx[:,-1]=-k*(T[:,-1]-T[:,-2])/dx[:,-1]
         
-#        if (self.BCs['bc_type_north']=='periodic') or (self.BCs['bc_type_south']=='periodic'):
+#        if (self.BCs.BCs['bc_type_north']=='periodic') or (self.BCs.BCs['bc_type_south']=='periodic'):
 #            qy[0,:] =-k*(T[1,:]-T[-1,:])/(dy[0,:]+dy[-1,:])
 #            qy[-1,:]=-k*(T[0,:]-T[-2,:])/(dy[-1,:]+dy[-2,:])
-        if self.BCs['bc_type_north']=='outlet':
+        if self.BCs.BCs['bc_type_north']=='outlet':
             qx[-1,:]-=aS[-1,:]*(T[-1,:]-T[-2,:])
-#        elif type(self.BCs['bc_north_T']) is tuple:
-#            qx[-1,:]=self.BCs['bc_north_T'][1]
+#        elif type(self.BCs.BCs['bc_north_T']) is tuple:
+#            qx[-1,:]=self.BCs.BCs['bc_north_T'][1]
 #            qx[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
-        if self.BCs['bc_type_south']=='outlet':
+        if self.BCs.BCs['bc_type_south']=='outlet':
             qx[0,:] -=aN[0,:]*(T[1,:]-T[0,:])
-#        elif type(self.BCs['bc_south_T']) is tuple:
-#            qx[0,:] =self.BCs['bc_south_T'][1]
+#        elif type(self.BCs.BCs['bc_south_T']) is tuple:
+#            qx[0,:] =self.BCs.BCs['bc_south_T'][1]
 #            qx[-1,:]=-k*(T[-1,:]-T[-2,:])/dy[-1,:]
 #        else:
 #            qx[0,:] =-k*(T[1,:]-T[0,:])/dy[0,:]
@@ -532,188 +542,6 @@ class TwoDimPlanarSolve():
         
         return qx
     
-    # Bondary condition handler (not including periodic BCs)
-    def Apply_BCs(self, rho, rhou, rhov, rhoE, u, v, p, T, dx, dy):
-        # Start with wall BCs
-        
-        # Left face
-        if self.BCs['bc_type_left']=='wall':
-#            print 'Left: wall'
-            p[:,0]  =p[:,1]
-            rhou[:,0]  =0
-            rhov[:,0]  =0
-            T[:,0]  =self.BCs['bc_left_T']
-            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
-#            rhoE[:,0]=rho[:,0]*self.Domain.Cv*T[:,0]
-            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)
-        
-        elif self.BCs['bc_type_left']=='slip_wall':
-            rhou[:,0]  =0
-            p[:,0]  =p[:,1]
-            T[:,0]  =self.BCs['bc_left_T']
-            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
-#            rhoE[:,0]=rho[:,0]*(0.5*(v[:,0]**2)+self.Domain.Cv*T[:,0])
-            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)
-            
-        elif self.BCs['bc_type_left']=='inlet':
-            p[:,0]  =self.BCs['bc_left_p']
-#            pt      =self.BCs['bc_left_p']
-            u[:,0]  =self.BCs['bc_left_u']
-            v[:,0]  =self.BCs['bc_left_v']
-            T[:,0]  =self.BCs['bc_left_T']
-            
-#            u[:,0]=np.sqrt(2*self.Domain.gamma*self.Domain.R*T[:,0]/(self.Domain.gamma-1)\
-#                 *((p[:,0]/pt)**(self.Domain.gamma/(self.Domain.gamma-1))-1))
-#            p[:,0]=pt*(1+(self.Domain.gamma-1)/2*u[:,0]/(self.Domain.gamma*self.Domain.R*T[:,0]))\
-#                 **((self.Domain.gamma-1)/self.Domain.gamma)
-
-#            p[:,0]=rho[:,0]*self.Domain.R*T[:,0]
-            rho[:,0]=p[:,0]/(self.Domain.R*T[:,0])
-            rhou[:,0]=rho[:,0]*u[:,0]
-            rhov[:,0]=rho[:,0]*v[:,0]
-#            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
-            rhoE[:,0]=rho[:,0]*(0.5*(u[:,0]**2+v[:,0]**2)+self.Domain.Cv*T[:,0])
-                
-        elif self.BCs['bc_type_left']=='outlet':
-            p[:,0]=self.BCs['bc_left_p']
-            rhoE[:,0]=p[:,0]/(self.Domain.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
-        
-        # Periodic boundary       
-        else:
-            rho[:,0] =rho[:,-1]
-            rhou[:,0]=rhou[:,-1]
-            rhov[:,0]=rhov[:,-1]
-            rhoE[:,0]=rhoE[:,-1]
-        
-        # Right face
-        if self.BCs['bc_type_right']=='wall':
-#            print 'Right: wall'
-            p[:,-1]  =p[:,-2]
-            rhou[:,-1]  =0
-            rhov[:,-1]  =0
-#            if type(self.BCs['bc_right_T']) is tuple:
-#                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
-            T[:,-1]  =self.BCs['bc_right_T']
-            rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
-#            rhoE[:,-1]=rho[:,-1]*self.Domain.Cv*T[:,-1]
-            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)
-            
-        elif self.BCs['bc_type_right']=='slip_wall':
-            p[:,-1]  =p[:,-2]
-            rhou[:,-1]  =0
-#            if type(self.BCs['bc_right_T']) is tuple:
-#                T[:,-1]  =T[:,-2]+self.BCs['bc_right_T'][1]*dx[:,-1]
-            T[:,-1]  =self.BCs['bc_right_T']
-            rho[:,-1]=p[:,-1]/(self.Domain.R*T[:,-1])
-#            rhoE[:,-1]=rho[:,-1]*(0.5*(v[:,-1]**2)+self.Domain.Cv*T[:,-1])
-            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)
-        
-        elif self.BCs['bc_type_right']=='inlet':
-            u[:,-1]  =self.BCs['bc_right_u']
-            v[:,-1]  =self.BCs['bc_right_v']
-            T[:,-1]  =self.BCs['bc_right_T']
-            p[:,-1]  =self.BCs['bc_right_p']
-            
-            rho[:,-1]=p[:,-1]/self.Domain.R/T[:,-1]
-            rhou[:,-1]=rho[:,-1]*u[:,-1]
-            rhov[:,-1]=rho[:,-1]*v[:,-1]
-#            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
-            rhoE[:,-1]=rho[:,-1]*(0.5*(u[:,-1]**2+v[:,-1]**2)+self.Domain.Cv*T[:,-1])
-                
-        elif self.BCs['bc_type_right']=='outlet':
-            p[:,-1]=self.BCs['bc_right_p']
-            rhoE[:,-1]=p[:,-1]/(self.Domain.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
-        
-        else:
-            rho[:,-1] =rho[:,0]
-            rhou[:,-1]=rhou[:,0]
-            rhov[:,-1]=rhov[:,0]
-            rhoE[:,-1]=rhoE[:,0]
-            
-        # South face
-        if self.BCs['bc_type_south']=='wall':
-#            print 'South: wall'
-            p[0,:]  =p[1,:]
-            rhou[0,:]  =0
-            rhov[0,:]  =0
-            T[0,:]  =self.BCs['bc_south_T']
-            rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
-#            rhoE[0,:]=rho[0,:]*self.Domain.Cv*T[0,:]
-            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)
-            
-        elif self.BCs['bc_type_south']=='slip_wall':
-            p[0,:]  =p[1,:]
-            rhov[0,:]  =0
-            T[0,:]  =self.BCs['bc_south_T']
-            rho[0,:]=p[0,:]/(self.Domain.R*T[0,:])
-#            rhoE[0,:]=rho[0,:]*(0.5*(u[0,:]**2)+self.Domain.Cv*T[0,:])
-            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)
-        
-        elif self.BCs['bc_type_south']=='inlet':
-            u[0,:]  =self.BCs['bc_south_u']
-            v[0,:]  =self.BCs['bc_south_v']
-            T[0,:]  =self.BCs['bc_south_T']
-            p[0,:]  =self.BCs['bc_south_p']
-            
-            rho[0,:]=p[0,:]/self.Domain.R/T[0,:]
-            rhou[0,:]=rho[0,:]*u[0,:]
-            rhov[0,:]=rho[0,:]*v[0,:]
-#            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
-            rhoE[0,:]=rho[0,:]*(0.5*(u[0,:]**2+v[0,:]**2)+self.Domain.Cv*T[0,:])
-                
-        elif self.BCs['bc_type_south']=='outlet':
-            p[0,:]=self.BCs['bc_south_p']
-            rhoE[0,:]=p[0,:]/(self.Domain.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
-        
-        # Periodic boundary       
-        else:
-            rho[0,:] =rho[-1,:]
-            rhou[0,:]=rhou[-1,:]
-            rhov[0,:]=rhov[-1,:]
-            rhoE[0,:]=rhoE[-1,:]
-            
-        # North face
-        if self.BCs['bc_type_north']=='wall':
-#            print 'North: wall'
-            p[-1,:]  =p[-2,:]
-            rhou[-1,:]  =0
-            rhov[-1,:]  =0
-            T[-1,:]  =self.BCs['bc_north_T']
-            rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
-#            rhoE[-1,:]=rho[-1,:]*self.Domain.Cv*T[-1,:]
-            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)
-            
-        elif self.BCs['bc_type_north']=='slip_wall':
-            p[-1,:]  =p[-2,:]
-            rhov[-1,:]  =0
-            T[-1,:]  =self.BCs['bc_north_T']
-            rho[-1,:]=p[-1,:]/(self.Domain.R*T[-1,:])
-#            rhoE[-1,:]=rho[-1,:]*(0.5*(u[-1,:]**2)+self.Domain.Cv*T[-1,:])
-            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)
-        
-        elif self.BCs['bc_type_north']=='inlet':
-            u[-1,:]  =self.BCs['bc_north_u']
-            v[-1,:]  =self.BCs['bc_north_v']
-            T[-1,:]  =self.BCs['bc_north_T']
-            p[-1,:]  =self.BCs['bc_north_p']
-            
-            rho[-1,:]=p[-1,:]/self.Domain.R/T[-1,:]
-            rhou[-1,:]=rho[-1,:]*u[-1,:]
-            rhov[-1,:]=rho[-1,:]*v[-1,:]
-#            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
-            rhoE[-1,:]=rho[-1,:]*(0.5*(u[-1,:]**2+v[-1,:]**2)+self.Domain.Cv*T[-1,:])
-                
-        elif self.BCs['bc_type_north']=='outlet':
-            p[-1,:]=self.BCs['bc_north_p']
-            rhoE[-1,:]=p[-1,:]/(self.Domain.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
-        
-        # Periodic boundary       
-        else:
-            rho[-1,:] =rho[0,:]
-            rhou[-1,:]=rhou[0,:]
-            rhov[-1,:]=rhov[0,:]
-            rhoE[-1,:]=rhoE[0,:]
-        
     # Main compressible solver (1 time step)
     def Advance_Soln(self, vol):
         rho_0=self.Domain.rho.copy()
@@ -749,7 +577,9 @@ class TwoDimPlanarSolve():
             drhoEdt=[0]*Nstep
         
         u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
-        dt=self.getdt(T)
+        lam1,lam2,lam3,lam4=self.eigenval(u,v,T)
+        print(lam1,lam2,lam3,lam4)
+        dt=self.getdt(lam1,lam2,lam3,lam4,T)
         if (np.isnan(dt)) or (dt<=0):
 #            print '    Time step size: %f'%dt
             print '*********Diverging time step***********'
@@ -769,26 +599,26 @@ class TwoDimPlanarSolve():
 	    self.Calculate_Stress(u, v, self.dx, self.dy)
 			
             # Density
-            drhodt[step] =self.compute_Flux(rho_c, u, v, Ax, Ay, self.dx, self.dy)
+            drhodt[step] =self.compute_Flux(rho_c, u, v, Ax, Ay, self.dx, self.dy, lam1)
             drhodt[step]/=vol
             
             # x-momentum (flux, pressure, shear stress, gravity)
-            drhoudt[step] =self.compute_Flux(rhou_c, u, v, Ax, Ay, self.dx, self.dy)
-            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), Ax, Ay, self.dx, self.dy)
-            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, Ax, Ay, self.dx, self.dy)
+            drhoudt[step] =self.compute_Flux(rhou_c, u, v, Ax, Ay, self.dx, self.dy, lam2)
+            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), Ax, Ay, self.dx, self.dy, 0)
+            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, Ax, Ay, self.dx, self.dy, 0)
             drhoudt[step]+=rho_c*self.gx*vol
             drhoudt[step]/=vol
     
             # y-momentum (flux, pressure, shear stress, gravity)
-            drhovdt[step] =self.compute_Flux(rhov_c, u, v, Ax, Ay, self.dx, self.dy)
-            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), Ax, Ay, self.dx, self.dy)
-            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, Ax, Ay, self.dx, self.dy)
+            drhovdt[step] =self.compute_Flux(rhov_c, u, v, Ax, Ay, self.dx, self.dy, lam3)
+            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), Ax, Ay, self.dx, self.dy, 0)
+            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, Ax, Ay, self.dx, self.dy, 0)
             drhovdt[step]+=rho_c*self.gy*vol
             drhovdt[step]/=vol
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
-            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, Ax, Ay, self.dx, self.dy)
-            drhoEdt[step]+=self.compute_Flux(p, u, v, Ax, Ay, self.dx, self.dy)
+            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, Ax, Ay, self.dx, self.dy, lam4)
+            drhoEdt[step]+=self.compute_Flux(p, u, v, Ax, Ay, self.dx, self.dy, 0)
             drhoEdt[step]+=self.Source_CSWork(u, v, Ax, Ay, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)*vol
@@ -811,7 +641,8 @@ class TwoDimPlanarSolve():
                 ###################################################################
                 # Apply boundary conditions
                 ###################################################################
-                self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T, self.dx, self.dy)
+#                self.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T, self.dx, self.dy)
+                self.BCs.Apply_BCs(rho_c, rhou_c, rhov_c, rhoE_c, u, v, p, T, self.dx, self.dy)
                 
                 # Experiment-rectangular solid inside domain, border on south face
 #                u[25:35,25:35]=0
@@ -843,7 +674,9 @@ class TwoDimPlanarSolve():
         ###################################################################
         # Apply boundary conditions
         ###################################################################
-        self.Apply_BCs(self.Domain.rho, self.Domain.rhou, self.Domain.rhov,\
+#        self.Apply_BCs(self.Domain.rho, self.Domain.rhou, self.Domain.rhov,\
+#                       self.Domain.rhoE, u, v, p, T, self.dx, self.dy)
+        self.BCs.Apply_BCs(self.Domain.rho, self.Domain.rhou, self.Domain.rhov,\
                        self.Domain.rhoE, u, v, p, T, self.dx, self.dy)
         # Experiment-rectangular solid inside domain, border on south face
 #        u[:10,20:30]=0

@@ -237,7 +237,7 @@ domain.rhou=domain.rho*u
 domain.rhov=domain.rho*v
 domain.rhoE=domain.rho*(0.5*(u**2+v**2)+domain.Cv*T)
 
-solver.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
+solver.BCs.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
                  u, v, p, T, solver.dx, solver.dy)
 #domain.rho[:,0]=p[:,0]/(domain.R*T[:,0])
 # Experiment-rectangular solid inside domain, border on south face

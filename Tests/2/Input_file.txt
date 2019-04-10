@@ -26,18 +26,18 @@ bias_size_y:0.0005
 
 Time advancement:
 CFL:0.4
-total_time_steps:10
+total_time_steps:1000
 total_time:None
 Time_Scheme:RK2
 Number_Data_Output:1
 
 Boundary conditions:
-bc_type_left:inlet
-bc_left_u:5.0
+bc_type_left:slip_wall
+bc_left_u:0.01
 bc_left_v:0.0
-bc_left_p:202650.0
+bc_left_p:101325.0
 bc_left_T:300.0
-bc_type_right:outlet
+bc_type_right:slip_wall
 bc_right_u:None
 bc_right_v:None
 bc_right_p:101325.0
@@ -51,5 +51,9 @@ bc_type_north:wall
 bc_north_u:None
 bc_north_v:None
 bc_north_p:101325.0
-bc_north_T:600.0
+bc_north_T:300.0
 
+#################### Solver aborted #######################
+Time step 10, Time elapsed=0.000000, error code=1;
+Error codes: 1-time step, 2-Density, 3-x-momentum, 4-y-momentum, 5-Energy
+Solver time per 1000 time steps: 1.858333 min

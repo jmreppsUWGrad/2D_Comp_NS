@@ -269,7 +269,6 @@ input_file.header('INPUT')
 
 # Write input file with settings
 input_file.input_writer(settings, BCs)
-input_file.close()
 print '################################\n'
 
 # save initial values for first data files
@@ -302,6 +301,9 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
         print '#################### Solver aborted #######################'
         print 'Saving data to numpy array files...'
         save_data(domain, '{:f}'.format(t))
+        input_file.Write_single_line('#################### Solver aborted #######################')
+        input_file.Write_single_line('Time step %i, Time elapsed=%f, error code=%i;'%(nt,t,err))
+        input_file.Write_single_line('Error codes: 1-time step, 2-Density, 3-x-momentum, 4-y-momentum, 5-Energy')
         break
     
     t+=dt
@@ -316,6 +318,8 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
 #output_file.close()
 time_end=time.time()
 print 'Solver time per 1000 time steps: %f min'%((time_end-time_begin)/60.0*1000/nt)
+input_file.Write_single_line('Solver time per 1000 time steps: %f min'%((time_end-time_begin)/60.0*1000/nt))
+input_file.close()
 ##########################################################################
 # ------------------------------------Post-processing
 ##########################################################################

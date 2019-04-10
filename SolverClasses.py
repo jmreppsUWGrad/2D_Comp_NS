@@ -153,41 +153,47 @@ class TwoDimPlanarSolve():
     # Flux of conservative variables
     # Calculates for entire domain and accounts for periodicity
     # Can be hacked to solve gradients setting rho to variable and u or v to zeros
-    def compute_Flux(self, rho, u, v, Ax, Ay, dx, dy, lam):
+    def compute_Flux(self, rho, u, v, Ax, Ay, dx, dy, lam, scheme):
         ddx=np.zeros_like(u)
         ddy=np.zeros_like(v)
 #        rhou=rho*u
 #        rhov=rho*v
+        if scheme=='UDS':
+            ud=1.0
+            LLF=0
+        else:
+            ud=0
+            LLF=1.0
         
         # Flux across left/right faces
-        ddx[1:-1,1:]  =Ax[1:-1,1:]*0.5*(rho[1:-1,1:]*u[1:-1,1:]+\
-               rho[1:-1,:-1]*u[1:-1,:-1]-lam*(u[1:-1,1:]-u[1:-1,:-1]))
-        ddx[1:-1,:-1]-=Ax[1:-1,:-1]*0.5*(rho[1:-1,:-1]*u[1:-1,:-1]+\
-               rho[1:-1,1:]*u[1:-1,1:]-lam*(u[1:-1,1:]-u[1:-1,:-1]))
+        ddx[:,1:]  =-Ax[:,1:]*0.5*(rho[:,1:]*(u[:,1:]-ud*np.abs(u[:,1:]))+\
+               rho[:,:-1]*(u[:,:-1]+ud*np.abs(u[:,:-1]))-LLF*lam*(u[:,1:]-u[:,:-1]))
+        ddx[:,:-1]+=Ax[:,:-1]*0.5*(rho[:,:-1]*(u[:,:-1]+ud*np.abs(u[:,:-1]))+\
+               rho[:,1:]*(u[:,1:]-ud*np.abs(u[:,1:]))-LLF*lam*(u[:,1:]-u[:,:-1]))
             # North/south boundaries
-        ddx[0,1:]   =Ax[0,1:]*0.5*(rho[0,1:]*u[0,1:]+rho[0,:-1]*u[0,:-1]\
-               -lam*(u[0,1:]-u[0,:-1]))
-        ddx[0,:-1] -=Ax[0,:-1]*0.5*(rho[0,:-1]*u[0,:-1]+rho[0,1:]*u[0,1:]\
-               -lam*(u[0,1:]-u[0,:-1]))
-        ddx[-1,1:]  =Ax[-1,1:]*0.5*(rho[-1,1:]*u[-1,1:]+rho[1,:-1]*u[-1,:-1]\
-               -lam*(u[-1,1:]-u[-1,:-1]))
-        ddx[-1,:-1]-=Ax[-1,:-1]*0.5*(rho[-1,:-1]*u[-1,:-1]+rho[1,1:]*u[-1,1:]\
-               -lam*(u[-1,1:]-u[-1,:-1]))
+#        ddx[0,1:]   =-Ax[0,1:]*0.5*(rho[0,1:]*(u[0,1:]-np.abs(u[0,1:]))+rho[0,:-1]*(u[0,:-1]+np.abs(u[0,:-1]))\
+#               -lam*(u[0,1:]-u[0,:-1]))
+#        ddx[0,:-1] +=Ax[0,:-1]*0.5*(rho[0,:-1]*(u[0,:-1]+np.abs(u[0,:-1]))+rho[0,1:]*(u[0,1:]-np.abs(u[0,1:]))\
+#               -lam*(u[0,1:]-u[0,:-1]))
+#        ddx[-1,1:]  =-Ax[-1,1:]*0.5*(rho[-1,1:]*(u[-1,1:]-np.abs(u[-1,1:]))+rho[1,:-1]*(u[-1,:-1]+np.abs(u[-1,:-1]))\
+#               -lam*(u[-1,1:]-u[-1,:-1]))
+#        ddx[-1,:-1]+=Ax[-1,:-1]*0.5*(rho[-1,:-1]*(u[-1,:-1]+np.abs(u[-1,:-1]))+rho[1,1:]*(u[-1,1:]-np.abs(u[-1,1:]))\
+#               -lam*(u[-1,1:]-u[-1,:-1]))
         
         # Flux across top/bottom faces
-        ddy[1:,1:-1]  =Ay[1:,1:-1]*0.5*(rho[1:,1:-1]*v[1:,1:-1]+\
-               rho[:-1,1:-1]*v[:-1,1:-1]-lam*(v[1:,1:-1]-v[:-1,1:-1]))
-        ddy[:-1,1:-1]-=Ay[:-1,1:-1]*0.5*(rho[:-1,1:-1]*v[:-1,1:-1]+\
-               rho[1:,1:-1]*v[1:,1:-1]-lam*(v[1:,1:-1]-v[:-1,1:-1]))
+        ddy[1:,:]  =-Ay[1:,:]*0.5*(rho[1:,:]*(v[1:,:]-ud*np.abs(v[1:,:]))+\
+               rho[:-1,:]*(v[:-1,:]+ud*np.abs(v[:-1,:]))-LLF*lam*(v[1:,:]-v[:-1,:]))
+        ddy[:-1,:]+=Ay[:-1,:]*0.5*(rho[:-1,:]*(v[:-1,:]+ud*np.abs(v[:-1,:]))+\
+               rho[1:,:]*(v[1:,:]-ud*np.abs(v[1:,:]))-LLF*lam*(v[1:,:]-v[:-1,:]))
             # East/west boundaries
-        ddy[1:,0]   =Ay[1:,0]*0.5*(rho[1:,0]*v[1:,0]+rho[:-1,0]*v[:-1,0]\
-               -lam*(v[1:,0]-v[:-1,0]))
-        ddy[:-1,0] -=Ay[:-1,0]*0.5*(rho[:-1,0]*v[:-1,0]+rho[1:,0]*v[1:,0]\
-               -lam*(v[1:,0]-v[:-1,0]))
-        ddy[1:,-1]  =Ay[1:,-1]*0.5*(rho[1:,-1]*v[1:,-1]+rho[:-1,-1]*v[:-1,-1]\
-               -lam*(v[1:,-1]-v[:-1,-1]))
-        ddy[:-1,-1]-=Ay[:-1,-1]*0.5*(rho[:-1,-1]*v[:-1,-1]+rho[1:,-1]*v[1:,-1]\
-               -lam*(v[1:,-1]-v[:-1,-1]))
+#        ddy[1:,0]   =-Ay[1:,0]*0.5*(rho[1:,0]*(v[1:,0]-np.abs(v[1:,0]))+rho[:-1,0]*(v[:-1,0]+np.abs(v[:-1,0]))\
+#               -lam*(v[1:,0]-v[:-1,0]))
+#        ddy[:-1,0] +=Ay[:-1,0]*0.5*(rho[:-1,0]*(v[:-1,0]+np.abs(v[:-1,0]))+rho[1:,0]*(v[1:,0]-np.abs(v[1:,0]))\
+#               -lam*(v[1:,0]-v[:-1,0]))
+#        ddy[1:,-1]  =-Ay[1:,-1]*0.5*(rho[1:,-1]*(v[1:,-1]-np.abs(v[1:,-1]))+rho[:-1,-1]*(v[:-1,-1]+np.abs(v[:-1,-1]))\
+#               -lam*(v[1:,-1]-v[:-1,-1]))
+#        ddy[:-1,-1]+=Ay[:-1,-1]*0.5*(rho[:-1,-1]*(v[:-1,-1]+np.abs(v[:-1,-1]))+rho[1:,-1]*(v[1:,-1]-np.abs(v[1:,-1]))\
+#               -lam*(v[1:,-1]-v[:-1,-1]))
         
         
 #        if (self.BCs.BCs['bc_type_left']=='periodic') or (self.BCs.BCs['bc_type_right']=='periodic'):
@@ -425,8 +431,8 @@ class TwoDimPlanarSolve():
 	tau21v=self.Domain.tau12*v
 	tau22v=self.Domain.tau22*v
 		
-	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, Ax, Ay, dx, dy, 0)
-	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, Ax, Ay, dx, dy, 0)
+	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, Ax, Ay, dx, dy, 0, 'LLF')
+	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, Ax, Ay, dx, dy, 0, 'LLF')
         return work
     
     # Heat conduction gradient source term
@@ -598,26 +604,26 @@ class TwoDimPlanarSolve():
 	    self.Calculate_Stress(u, v, self.dx, self.dy)
 			
             # Density
-            drhodt[step] =self.compute_Flux(rho_c, u, v, Ax, Ay, self.dx, self.dy, lam1)
+            drhodt[step] =self.compute_Flux(rho_c, u, v, Ax, Ay, self.dx, self.dy, lam1, 'UDS')
             drhodt[step]/=vol
             
             # x-momentum (flux, pressure, shear stress, gravity)
-            drhoudt[step] =self.compute_Flux(rhou_c, u, v, Ax, Ay, self.dx, self.dy, lam2)
-            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), Ax, Ay, self.dx, self.dy, 0)
-            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, Ax, Ay, self.dx, self.dy, 0)
+            drhoudt[step] =self.compute_Flux(rhou_c, u, v, Ax, Ay, self.dx, self.dy, lam2, 'UDS')
+            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), Ax, Ay, self.dx, self.dy, 0, 'LLF')
+            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, Ax, Ay, self.dx, self.dy, 0, 'LLF')
             drhoudt[step]+=rho_c*self.gx*vol
             drhoudt[step]/=vol
     
             # y-momentum (flux, pressure, shear stress, gravity)
-            drhovdt[step] =self.compute_Flux(rhov_c, u, v, Ax, Ay, self.dx, self.dy, lam3)
-            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), Ax, Ay, self.dx, self.dy, 0)
-            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, Ax, Ay, self.dx, self.dy, 0)
+            drhovdt[step] =self.compute_Flux(rhov_c, u, v, Ax, Ay, self.dx, self.dy, lam3, 'UDS')
+            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), Ax, Ay, self.dx, self.dy, 0, 'LLF')
+            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, Ax, Ay, self.dx, self.dy, 0, 'LLF')
             drhovdt[step]+=rho_c*self.gy*vol
             drhovdt[step]/=vol
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
-            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, Ax, Ay, self.dx, self.dy, lam4)
-            drhoEdt[step]+=self.compute_Flux(p, u, v, Ax, Ay, self.dx, self.dy, 0)
+            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, Ax, Ay, self.dx, self.dy, lam4, 'UDS')
+            drhoEdt[step]+=self.compute_Flux(p, u, v, Ax, Ay, self.dx, self.dy, 0, 'LLF')
             drhoEdt[step]+=self.Source_CSWork(u, v, Ax, Ay, self.dx, self.dy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)*vol
@@ -697,16 +703,16 @@ class TwoDimPlanarSolve():
         
         if (np.amin(self.Domain.rho)<=0) or (np.isnan(np.amax(self.Domain.rho))):
             print '********* Divergence detected - Density **********'
-            return 1, dt
+            return 2, dt
         elif (np.isnan(np.amax(self.Domain.rhou))):
             print '********* Divergence detected - x-momentum ********'
-            return 2, dt
+            return 3, dt
         elif (np.isnan(np.amax(self.Domain.rhov))):
             print '********* Divergence detected - y-momentum ********'
-            return 3, dt
+            return 4, dt
         elif (np.amax(self.Domain.rhoE)<=0):
             print '********* Divergence detected - Energy **********'
-            return 4, dt
+            return 5, dt
         else:
             return 0, dt
         

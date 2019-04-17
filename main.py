@@ -213,7 +213,7 @@ print 'Initializing solver package...'
 solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 print '################################'
 print 'Initializing domain...'
-vol=domain.CV_vol()
+hx,hy=domain.CV_dim()
 if not Use_inital_values:
     T=np.zeros((domain.Ny,domain.Nx))
     u=np.zeros((domain.Ny,domain.Nx))
@@ -295,7 +295,7 @@ elif settings['total_time']=='None':
 
 while nt<settings['total_time_steps'] and t<settings['total_time']:
 #for nt in range(settings['total_time_steps']):
-    err,dt=solver.Advance_Soln(vol)
+    err,dt=solver.Advance_Soln(hx, hy)
     print 'Time step %i, Step size=%.6f, Time elapsed=%f;'%(nt+1,dt, t)
     if err>0:
         print '#################### Solver aborted #######################'

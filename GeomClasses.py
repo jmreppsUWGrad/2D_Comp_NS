@@ -134,48 +134,21 @@ class TwoDimPlanar:
         
         self.isMeshed=True
     
-    # Calculate and return volume of each node
-    def CV_vol(self):
-        v=np.zeros_like(self.rho)
-        dx,dy=np.meshgrid(self.dx, self.dy)
-        v[1:-1,1:-1]=0.25*(dx[1:-1,1:-1]+dx[1:-1,:-2])*(dy[1:-1,1:-1]+dy[:-2,1:-1])
-        v[0,0]      =0.25*(dx[0,0])*(dy[0,0])
-        v[0,1:-1]   =0.25*(dx[0,1:-1]+dx[0,:-2])*(dy[0,1:-1])
-        v[1:-1,0]   =0.25*(dx[1:-1,0])*(dy[1:-1,0]+dy[:-2,0])
-        v[0,-1]     =0.25*(dx[0,-1])*(dy[0,-1])
-        v[-1,0]     =0.25*(dx[-1,0])*(dy[-1,0])
-        v[-1,1:-1]  =0.25*(dx[-1,1:-1]+dx[-1,:-2])*(dy[-1,1:-1])
-        v[1:-1,-1]  =0.25*(dx[1:-1,-1])*(dy[1:-1,-1]+dy[:-2,-1])
-        v[-1,-1]    =0.25*(dx[-1,-1])*(dy[-1,-1])
-        return v
-    
     # Calculate and return area of faces at each node
-    def CV_area(self):
-        Ax=np.zeros_like(self.rho)
-        Ay=np.zeros_like(self.rho)
+    def CV_dim(self):
+        hx=np.zeros_like(self.rho)
+        hy=np.zeros_like(self.rho)
         dx,dy=np.meshgrid(self.dx, self.dy)
-        # Left/right face areas
-        Ax[1:-1,1:-1]=0.5*(dy[1:-1,1:-1]+dy[:-2,1:-1])
-        Ax[0,1:-1]   =0.5*(dy[0,1:-1])
-        Ax[-1,1:-1]  =0.5*(dy[-1,1:-1])
-        Ax[1:-1,-1]  =0.5*(dy[1:-1,-1]+dy[:-2,-1])
-        Ax[1:-1,0]   =0.5*(dy[1:-1,0]+dy[:-2,0])
-        Ax[0,0]      =0.5*(dy[0,0])
-        Ax[-1,0]     =0.5*(dy[-1,0])
-        Ax[0,-1]     =0.5*(dy[0,-1])
-        Ax[-1,-1]    =0.5*(dy[-1,-1])
-        # North/south face areas
-        Ay[1:-1,1:-1]=0.5*(dx[1:-1,1:-1]+dx[1:-1,:-2])
-        Ay[1:-1,0]   =0.5*(dx[1:-1,0])
-        Ay[1:-1,-1]  =0.5*(dx[1:-1,-1])
-        Ay[0,1:-1]   =0.5*(dx[0,1:-1]+dx[0,:-2])
-        Ay[-1,1:-1]  =0.5*(dx[0,1:-1]+dx[0,:-2])
-        Ay[0,0]      =0.5*(dx[0,0])
-        Ay[0,-1]     =0.5*(dx[0,-1])
-        Ay[-1,0]     =0.5*(dx[-1,0])
-        Ay[-1,-1]    =0.5*(dx[-1,-1])
+        # y-dimension
+        hy[1:-1,:]=0.5*(dy[1:-1,:]+dy[:-2,:])
+        hy[0,:]   =0.5*(dy[0,:])
+        hy[-1,:]  =0.5*(dy[-1,:])
+        # x-dimension
+        hx[:,1:-1]=0.5*(dx[:,1:-1]+dx[:,:-2])
+        hx[:,0]   =0.5*(dx[:,0])
+        hx[:,-1]  =0.5*(dx[:,-1])
         
-        return Ax, Ay
+        return hx, hy
     
     # Return primitive variables from conservative ones
     def primitiveFromConserv(self, rho, rhou, rhov, rhoE):

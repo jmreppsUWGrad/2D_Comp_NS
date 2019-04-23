@@ -142,6 +142,15 @@ def save_data(domain, t):
     np.save('rhov_'+t, domain.rhov, False)
     np.save('rhoE_'+t, domain.rhoE, False)
 
+def vel_vortex(domain, K, x0, y0):
+#    u=np.zeros_like(domain.X)
+#    v=np.zeros_like(domain.X)
+    u=K*(domain.Y-y0)/((domain.X-x0)**2+(domain.Y-y0)**2)
+    v=-K*(domain.X-x0)/((domain.X-x0)**2+(domain.Y-y0)**2)
+#    u[np.abs(u)%1000000>10]=0
+#    v[np.abs(v)%1000000>10]=0
+    return u,v
+
 ##########################################################################
 # ------------------------------ Geometry, Domain and BCs Setup
 #    Reference directions:
@@ -184,9 +193,6 @@ except:
     os.chdir(settings['Output_directory'])
 print '################################'
 
-# Initial conditions from previous run/already in memory
-Use_inital_values                   = False
-
 print 'Initializing geometry package...'
 # Calculate fluid properties based on fluid from input file [IN PROGRESS]
 #try:
@@ -214,31 +220,31 @@ solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 print '################################'
 print 'Initializing domain...'
 hx,hy=domain.CV_dim()
-if not Use_inital_values:
-    T=np.zeros((domain.Ny,domain.Nx))
-    u=np.zeros((domain.Ny,domain.Nx))
-    v=np.zeros((domain.Ny,domain.Nx))
-    p=np.zeros((domain.Ny,domain.Nx))
-    
-    u[:,:]=0
-    v[:,:]=0
-    
-    #domain.rho[:,:]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
-    T[:,:]=300
+
+T=np.zeros((domain.Ny,domain.Nx))
+u=np.zeros((domain.Ny,domain.Nx))
+v=np.zeros((domain.Ny,domain.Nx))
+p=np.zeros((domain.Ny,domain.Nx))
+
+u[:,:]=0
+v[:,:]=0
+u,v=vel_vortex(domain, 10**(-5), 0.0005, 0.0005)
+u_0=u.copy()
+v_0=v.copy()
+#domain.rho[:,:]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
+T[:,:]=300
 #    T[25:35,25:35]=600
-    p[:,:]=101325
+p[:,:]=101325
 #    p[:,:int(settings['Nodes_x']/2)]=101325
 #    p[:,int(settings['Nodes_x']/2):]=3*101325
-    #p=domain.rho*domain.R*T
-    domain.rho=p/(domain.R*T)
-else:
-    domain.rho=rho.copy()
+#p=domain.rho*domain.R*T
+domain.rho=p/(domain.R*T)
 domain.rhou=domain.rho*u
 domain.rhov=domain.rho*v
 domain.rhoE=domain.rho*(0.5*(u**2+v**2)+domain.Cv*T)
 
 solver.BCs.Apply_BCs(domain.rho, domain.rhou, domain.rhov, domain.rhoE, \
-                 u, v, p, T, solver.dx, solver.dy)
+                 u, v, p, T)
 #domain.rho[:,0]=p[:,0]/(domain.R*T[:,0])
 # Experiment-rectangular solid inside domain, border on south face
 #u[25:35,25:35]=0
@@ -388,4 +394,30 @@ pyplot.title('Velocity plot and Temperature distribution t=%f'%t);
 #pyplot.title('Density distribution');
 #fig6.savefig(datTime+'_Temp.png',dpi=300)
 
-print('Solver has finished its run')
+# Shear stress contour (tau11)
+#fig5=pyplot.figure(figsize=(7, 7))
+#pyplot.contourf(X, Y, domain.tau11, alpha=0.5, cmap=cm.viridis)  
+#pyplot.colorbar()
+#pyplot.xlabel('$x$ (m)')
+#pyplot.ylabel('$y$ (m)')
+#pyplot.title('tau11 distribution t=%f'%t);
+##fig5.savefig(datTime+'_Temp.png',dpi=300)
+#
+## Shear stress contour (tau12)
+#fig5=pyplot.figure(figsize=(7, 7))
+#pyplot.contourf(X, Y, domain.tau12, alpha=0.5, cmap=cm.viridis)  
+#pyplot.colorbar()
+#pyplot.xlabel('$x$ (m)')
+#pyplot.ylabel('$y$ (m)')
+#pyplot.title('tau12 distribution t=%f'%t);
+##fig5.savefig(datTime+'_Temp.png',dpi=300)
+#
+## Shear stress contour (tau22)
+#fig5=pyplot.figure(figsize=(7, 7))
+#pyplot.contourf(X, Y, domain.tau22, alpha=0.5, cmap=cm.viridis)  
+#pyplot.colorbar()
+#pyplot.xlabel('$x$ (m)')
+#pyplot.ylabel('$y$ (m)')
+#pyplot.title('tau22 distribution t=%f'%t);
+##fig5.savefig(datTime+'_Temp.png',dpi=300)
+#print('Solver has finished its run')

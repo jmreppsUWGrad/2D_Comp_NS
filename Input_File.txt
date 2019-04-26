@@ -17,7 +17,7 @@
 #	Fluid must be in CoolProp library to calculate k, gamma, R and mu [IN PROGRESS]
 ######################################################
 
-Length:0.01
+Length:1e-3
 Width:1e-3
 Nodes_x:125
 Nodes_y:125
@@ -47,8 +47,8 @@ bias_size_y:0.0005
 #	Number_Data_Output: Number of conservative variable files to be output over the time/number of steps specified
 ######################################################
 
-CFL:0.4
-total_time_steps:1000
+CFL:0.1
+total_time_steps:1
 total_time:None
 Time_Scheme:RK2
 Number_Data_Output:1
@@ -65,26 +65,30 @@ Number_Data_Output:1
 ######################################################
 
 #bc_type_left:inlet
-bc_type_left:slip_wall
+#bc_type_left:slip_wall
+bc_type_left:periodic
 bc_left_u:0.01
 bc_left_v:0
 bc_left_p:101325
 bc_left_T:300
 
 #bc_type_right:outlet
-bc_type_right:slip_wall
+#bc_type_right:slip_wall
+bc_type_right:periodic
 bc_right_u:None
 bc_right_v:None
 bc_right_p:101325
 bc_right_T:300
 
-bc_type_south:wall
+#bc_type_south:wall
+bc_type_south:periodic
 bc_south_u:None
 bc_south_v:None
 bc_south_p:101325
 bc_south_T:600
 
-bc_type_north:wall
+#bc_type_north:wall
+bc_type_north:periodic
 bc_north_u:None
 bc_north_v:None
 bc_north_p:101325

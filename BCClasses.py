@@ -28,9 +28,73 @@ class BCs():
         self.R=settings['R']
         self.gamma=settings['gamma']
         self.Cv=self.R/(self.gamma-1)
+    
+    # Apply BCs to stress and heat transfer (viscous BCs)
+    def Visc_BCs(self, tau11, tau12, tau22, qx, qy):
+        # Start with wall BCs
         
-    # Apply BCs
-    def Apply_BCs(self, rho, rhou, rhov, rhoE, u, v, p, T, dx, dy):
+        # Left face
+        if self.BCs['bc_type_left']=='slip_wall':
+           tau12[:,0]=0
+            
+        elif self.BCs['bc_type_left']=='outlet':
+            tau12[:,0]=tau12[:,1]
+            qx[:,0]=qx[:,1]
+        
+        # Periodic boundary       
+#        else:
+#            rho[:,0] =rho[:,-1]
+#            rhou[:,0]=rhou[:,-1]
+#            rhov[:,0]=rhov[:,-1]
+#            rhoE[:,0]=rhoE[:,-1]
+        
+        # Right face
+        if self.BCs['bc_type_right']=='slip_wall':
+            tau12[:,-1]=0
+        
+        elif self.BCs['bc_type_right']=='outlet':
+            tau12[:,-1]=tau12[:,-2]
+            qx[:,-1]=qx[:,-2]
+        
+        # Periodic boundary 
+#        else:
+#            rho[:,-1] =rho[:,0]
+#            rhou[:,-1]=rhou[:,0]
+#            rhov[:,-1]=rhov[:,0]
+#            rhoE[:,-1]=rhoE[:,0]
+            
+        # South face
+        if self.BCs['bc_type_south']=='slip_wall':
+            tau12[0,:]=0
+        
+        elif self.BCs['bc_type_south']=='outlet':
+            tau12[0,:]=tau12[1,:]
+            qy[0,:]=qy[1,:]
+        
+        # Periodic boundary       
+#        else:
+#            rho[0,:] =rho[-1,:]
+#            rhou[0,:]=rhou[-1,:]
+#            rhov[0,:]=rhov[-1,:]
+#            rhoE[0,:]=rhoE[-1,:]
+            
+        # North face
+        if self.BCs['bc_type_north']=='slip_wall':
+            tau12[-1,:]=0
+        
+        elif self.BCs['bc_type_north']=='outlet':
+            tau12[-1,:]=tau12[-2,:]
+            qy[-1,:]=qy[-2,:]
+        
+        # Periodic boundary       
+#        else:
+#            rho[-1,:] =rho[0,:]
+#            rhou[-1,:]=rhou[0,:]
+#            rhov[-1,:]=rhov[0,:]
+#            rhoE[-1,:]=rhoE[0,:]
+    
+    # Apply conservative BCs (inviscid BCs)
+    def Apply_BCs(self, rho, rhou, rhov, rhoE, u, v, p, T):
         # Start with wall BCs
         
         # Left face

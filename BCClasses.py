@@ -19,7 +19,7 @@ Desired:
 """
 
 #import numpy as np
-#import string as st
+import string as st
 
 class BCs():
     def __init__(self, settings, BC_dict, dx, dy):
@@ -34,10 +34,13 @@ class BCs():
         # Start with wall BCs
         
         # Left face
-        if self.BCs['bc_type_left']=='slip_wall':
+        if st.find(self.BCs['bc_type_left'], 'slip')>=0:
            tau12[:,0]=0
+       
+        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
+            qx[:,0]=0
             
-        elif self.BCs['bc_type_left']=='outlet':
+        if st.find(self.BCs['bc_type_left'], 'outlet')>=0:
             tau12[:,0]=tau12[:,1]
             qx[:,0]=qx[:,1]
         
@@ -49,10 +52,13 @@ class BCs():
 #            rhoE[:,0]=rhoE[:,-1]
         
         # Right face
-        if self.BCs['bc_type_right']=='slip_wall':
-            tau12[:,-1]=0
-        
-        elif self.BCs['bc_type_right']=='outlet':
+        if st.find(self.BCs['bc_type_right'], 'slip')>=0:
+           tau12[:,-1]=0
+       
+        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
+            qx[:,-1]=0
+            
+        if st.find(self.BCs['bc_type_right'], 'outlet')>=0:
             tau12[:,-1]=tau12[:,-2]
             qx[:,-1]=qx[:,-2]
         
@@ -64,10 +70,13 @@ class BCs():
 #            rhoE[:,-1]=rhoE[:,0]
             
         # South face
-        if self.BCs['bc_type_south']=='slip_wall':
+        if st.find(self.BCs['bc_type_south'], 'slip')>=0:
             tau12[0,:]=0
         
-        elif self.BCs['bc_type_south']=='outlet':
+        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
+            qy[0,:]=0
+        
+        if st.find(self.BCs['bc_type_south'], 'outlet')>=0:
             tau12[0,:]=tau12[1,:]
             qy[0,:]=qy[1,:]
         
@@ -79,10 +88,13 @@ class BCs():
 #            rhoE[0,:]=rhoE[-1,:]
             
         # North face
-        if self.BCs['bc_type_north']=='slip_wall':
+        if st.find(self.BCs['bc_type_north'], 'slip_wall')>=0:
             tau12[-1,:]=0
         
-        elif self.BCs['bc_type_north']=='outlet':
+        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
+            qy[-1,:]=0
+        
+        if st.find(self.BCs['bc_type_north'], 'outlet')>=0:
             tau12[-1,:]=tau12[-2,:]
             qy[-1,:]=qy[-2,:]
         

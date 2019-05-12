@@ -147,8 +147,8 @@ def vel_vortex(domain, K, x0, y0):
 #    v=np.zeros_like(domain.X)
     u=K*(domain.Y-y0)/((domain.X-x0)**2+(domain.Y-y0)**2)
     v=-K*(domain.X-x0)/((domain.X-x0)**2+(domain.Y-y0)**2)
-#    u[np.abs(u)%1000000>10]=0
-#    v[np.abs(v)%1000000>10]=0
+    u[np.abs(u)%1000000>10]=0
+    v[np.abs(v)%1000000>10]=0
     return u,v
 
 ##########################################################################
@@ -229,6 +229,8 @@ p=np.zeros((domain.Ny,domain.Nx))
 u[:,:]=0
 v[:,:]=0
 u,v=vel_vortex(domain, 10**(-5), 0.0005, 0.0005)
+#u[u==0]=np.amax(np.abs(u))
+#v[v==0]=np.amax(np.abs(v))
 u_0=u.copy()
 v_0=v.copy()
 #domain.rho[:,:]=CP.PropsSI('D','T',300,'P',101325,settings['Fluid'])
@@ -303,6 +305,8 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
 #for nt in range(settings['total_time_steps']):
     err,dt=solver.Advance_Soln(hx, hy)
     print 'Time step %i, Step size=%.6f, Time elapsed=%f;'%(nt+1,dt, t)
+    t+=dt
+    nt+=1
     if err>0:
         print '#################### Solver aborted #######################'
         print 'Saving data to numpy array files...'
@@ -312,8 +316,6 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
         input_file.Write_single_line('Error codes: 1-time step, 2-Density, 3-x-momentum, 4-y-momentum, 5-Energy')
         break
     
-    t+=dt
-    nt+=1
     # Output data to numpy files
     if (output_data_nt!=0 and nt%output_data_nt==0) or \
         (output_data_t!=0 and (t>=output_data_t*t_inc and t-dt<output_data_t*t_inc)):

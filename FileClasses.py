@@ -14,7 +14,7 @@ import string as st
 # Global declarations of data stored in files
 keys_Settings=['Length','Width','Nodes_x','Nodes_y','Fluid','k','gamma','R','mu',\
                'Gravity_x','Gravity_y', 'bias_type_x', 'bias_size_x','bias_type_y','bias_size_y']
-keys_Time_adv=['CFL','total_time_steps', 'total_time', 'Time_Scheme','Number_Data_Output']
+keys_Time_adv=['CFL','dt','total_time_steps', 'total_time', 'Time_Scheme','Number_Data_Output']
 
 keys_BCs=     ['bc_type_left', 'bc_left_u', 'bc_left_v', 'bc_left_p', 'bc_left_T',\
               'bc_type_right','bc_right_u','bc_right_v','bc_right_p','bc_right_T',\
@@ -121,9 +121,9 @@ class FileIn():
                         settings[line[0]]=st.split(line[1], '\n')[0]
                     elif line[0]=='total_time_steps' or line[0]=='Number_Data_Output':
                         settings[line[0]]=int(line[1])
-                    elif line[0]=='Output_directory':
-                        # String handler for directory
-                        settings[line[0]]=line[1]+':'+st.split(line[2], '\n')[0]
+#                    elif line[0]=='Output_directory':
+#                        # String handler for directory
+#                        settings[line[0]]=line[1]+':'+st.split(line[2], '\n')[0]
                     else:
                         # Float values
                         settings[line[0]]=float(line[1])

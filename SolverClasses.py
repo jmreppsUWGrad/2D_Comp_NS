@@ -36,6 +36,7 @@ class TwoDimPlanarSolve():
         self.Domain=geom_obj # Geometry object
         self.CFL=settings['CFL']
         self.time_scheme=settings['Time_Scheme']
+        self.dt=settings['dt']
 #        self.Nt=settings['total_time_steps']
 #        self.conv=conv
         self.gx=settings['Gravity_x']
@@ -56,10 +57,11 @@ class TwoDimPlanarSolve():
     
     # Time step check with dx, dy, T and CFL number
     def getdt(self, lam1, lam2, lam3, lam4, T):
-        dt1=np.amin(self.CFL*self.dx/(max(lam1,lam2,lam3,lam4)))
-        dt2=np.amin(self.CFL*self.dy/(max(lam1,lam2,lam3,lam4)))
-        
-        return min(dt1,dt2)
+#        dt1=np.amin(self.CFL*self.dx/(max(lam1,lam2,lam3,lam4)))
+#        dt2=np.amin(self.CFL*self.dy/(max(lam1,lam2,lam3,lam4)))
+        c=np.sqrt(self.Domain.gamma*self.Domain.R*T)
+        dt=np.amin(self.CFL*self.dx/c)
+        return dt#min(dt1,dt2)
     
     # Interpolation function (become flux function?)
     def interpolate(self, k1, k2, func):
@@ -68,76 +70,9 @@ class TwoDimPlanarSolve():
         else:
             return 2*k1*k2/(k1+k2)
     
-    # coefficients for velocity weighting in stress calculation
-    def get_Coeff(self, dx, dy, k, mult_fac):
-        aW=np.zeros_like(dx)
-        aE=np.zeros_like(dx)
-        aS=np.zeros_like(dx)
-        aN=np.zeros_like(dx)
-        
-        # Left/right face factors
-        aW[1:-1,1:-1] =0.5*k\
-                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,:-2])
-        aE[1:-1,1:-1] =0.5*k\
-                    *(dy[1:-1,1:-1]+dy[:-2,1:-1])/(dx[1:-1,1:-1])
-            # At north/south bondaries
-        aW[0,1:-1]    =0.5*k\
-            *(dy[0,1:-1])/(dx[0,:-2])
-        aE[0,1:-1]    =0.5*k\
-            *(dy[0,1:-1])/(dx[0,1:-1])
-        aW[-1,1:-1]   =0.5*k\
-            *(dy[-1,1:-1])/(dx[-1,:-2])
-        aE[-1,1:-1]   =0.5*k\
-            *(dy[-1,1:-1])/(dx[-1,1:-1])
-            # At east/west boundaries
-        aE[0,0]       =0.5*k\
-            *(dy[0,0])/dx[0,0]
-        aE[1:-1,0]    =0.5*k\
-            *(dy[1:-1,0]+dy[:-2,0])/dx[1:-1,0]
-        aE[-1,0]      =0.5*k\
-            *(dy[-1,0])/dx[-1,0]
-        aW[0,-1]      =0.5*k\
-            *(dy[0,-1])/dx[0,-1]
-        aW[1:-1,-1]   =0.5*k\
-            *(dy[1:-1,-1]+dy[:-2,-1])/dx[1:-1,-1]
-        aW[-1,-1]     =0.5*k\
-            *(dy[-1,-1])/dx[-1,-1]
-        
-        # Top/bottom faces
-        aS[1:-1,1:-1]=0.5*k\
-            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[:-2,1:-1]
-        aN[1:-1,1:-1]=0.5*k\
-            *(dx[1:-1,1:-1]+dx[1:-1,:-2])/dy[1:-1,1:-1]
-        
-            # Area account for east/west boundary nodes
-        aS[1:-1,0]    =0.5*k\
-            *(dx[1:-1,0])/(dy[:-2,0])
-        aN[1:-1,0]    =0.5*k\
-            *(dx[1:-1,0])/(dy[1:-1,0])
-        aS[1:-1,-1]   =0.5*k\
-            *(dx[1:-1,-1])/(dy[:-2,-1])
-        aN[1:-1,-1]   =0.5*k\
-            *(dx[1:-1,-1])/(dy[1:-1,-1])
-            # Forward/backward difference for north/south boundaries
-        aN[0,0]       =0.5*k\
-            *dx[0,0]/dy[0,0]
-        aN[0,1:-1]    =0.5*k\
-            *(dx[0,1:-1]+dx[0,:-2])/dy[0,1:-1]
-        aN[0,-1]      =0.5*k\
-            *dx[0,-1]/dy[0,-1]
-        aS[-1,0]      =0.5*k\
-            *dx[-1,0]/dy[-1,0]
-        aS[-1,1:-1]   =0.5*k\
-            *(dx[0,1:-1]+dx[0,:-2])/dy[-1,1:-1]
-        aS[-1,-1]     =0.5*k\
-            *dx[-1,-1]/dy[-1,-1]
-        
-        return aW,aE,aS,aN
-    
-    # Flux of conservative variables
-    # Calculates for entire domain and accounts for periodicity
+    # Flux of convective terms
     # Can be hacked to solve gradients setting rho to variable and u or v to zeros
-    def compute_Flux(self, rho, u, v, dx, dy, hx, hy, lam, scheme):
+    def compute_Flux_conv(self, rho, u, v, hx, hy, lam, scheme):
         ddx=np.zeros_like(u)
         ddy=np.zeros_like(v)
 #        rhou=rho*u
@@ -150,10 +85,12 @@ class TwoDimPlanarSolve():
             LLF=1.0
         
         # Flux across left/right faces
-        ddx[:,1:]  =-0.5*(rho[:,1:]*(u[:,1:]-ud*np.abs(u[:,1:]))+\
-               rho[:,:-1]*(u[:,:-1]+ud*np.abs(u[:,:-1]))-LLF*lam*(u[:,1:]-u[:,:-1]))/hx[:,1:]
-        ddx[:,:-1]+=0.5*(rho[:,:-1]*(u[:,:-1]+ud*np.abs(u[:,:-1]))+\
-               rho[:,1:]*(u[:,1:]-ud*np.abs(u[:,1:]))-LLF*lam*(u[:,1:]-u[:,:-1]))/hx[:,:-1]
+        ddx[:,1:] +=1.0/hx[:,1:]*self.interpolate(rho[:,1:],rho[:,:-1],'Linear')\
+                *self.interpolate(u[:,1:], u[:,:-1],'Linear')#\
+#                -LLF*lam*(u[:,1:]-u[:,:-1])
+        ddx[:,:-1]-=1.0/hx[:,:-1]*self.interpolate(rho[:,:-1], rho[:,1:],'Linear')\
+               *self.interpolate(u[:,:-1],u[:,1:],'Linear')#\
+#               -LLF*lam*(u[:,1:]-u[:,:-1])
         
             # North/south boundaries (OLD)
 #        ddx[0,1:]   =-Ax[0,1:]*0.5*(rho[0,1:]*(u[0,1:]-np.abs(u[0,1:]))+rho[0,:-1]*(u[0,:-1]+np.abs(u[0,:-1]))\
@@ -167,10 +104,12 @@ class TwoDimPlanarSolve():
             # Flux across left/right faces, no area consideration
         
         # Flux across top/bottom faces
-        ddy[1:,:]  =0.5*(rho[1:,:]*(v[1:,:]-ud*np.abs(v[1:,:]))+\
-               rho[:-1,:]*(v[:-1,:]+ud*np.abs(v[:-1,:]))-LLF*lam*(v[1:,:]-v[:-1,:]))/hy[1:,:]
-        ddy[:-1,:]+=0.5*(rho[:-1,:]*(v[:-1,:]+ud*np.abs(v[:-1,:]))+\
-               rho[1:,:]*(v[1:,:]-ud*np.abs(v[1:,:]))-LLF*lam*(v[1:,:]-v[:-1,:]))/hy[:-1,:]
+        ddy[1:,:] +=1.0/hy[1:,:]*self.interpolate(rho[1:,:],rho[:-1,:],'Linear')\
+               *self.interpolate(v[1:,:],v[:-1,:],'Linear')#\
+#               -LLF*lam*(v[1:,:]-v[:-1,:])
+        ddy[:-1,:]-=1.0/hy[:-1,:]*self.interpolate(rho[:-1,:],rho[1:,:],'Linear')\
+               *self.interpolate(v[:-1,:],v[1:,:],'Linear')#\
+#               -LLF*lam*(v[1:,:]-v[:-1,:])
             # East/west boundaries (OLD)
 #        ddy[1:,0]   =-Ay[1:,0]*0.5*(rho[1:,0]*(v[1:,0]-np.abs(v[1:,0]))+rho[:-1,0]*(v[:-1,0]+np.abs(v[:-1,0]))\
 #               -lam*(v[1:,0]-v[:-1,0]))
@@ -199,16 +138,121 @@ class TwoDimPlanarSolve():
         
         return ddx+ddy
     
-    # Shear stress calculation
-    def Calculate_Stress(self, u, v, dx, dy):
+    # Shear stress calculation (flux of stress)
+    def Calculate_Stress(self, u, v, hx, hy):
         mu=self.Domain.mu
-        	# Central differences up to boundaries
-        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])-\
-           (v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2])+\
-           (u[2:,1:-1]-u[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1]))
-        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(dy[1:-1,1:-1]+dy[:-2,1:-1])-\
-           (u[1:-1,2:]-u[1:-1,:-2])/(dx[1:-1,1:-1]+dx[1:-1,:-2]))
+        F_11=np.zeros_like(self.dx) # Flux of tau11
+        F_12=np.zeros_like(self.dx) # Flux of tau12
+        F_21=np.zeros_like(self.dx) # Flux of tau21
+        F_22=np.zeros_like(self.dx) # Flux of tau22
+        
+        # Flux of x gradients in x
+        F_11[:,1:] -=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
+        F_11[:,:-1]+=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
+        
+        F_21[:,1:] -=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
+        F_21[:,:-1]+=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
+        
+        # Flux of y gradients in x
+        #   Left faces
+        F_11[1:-1,1:] -=2.0/3*mu/hx[1:-1,1:]*(\
+            0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+        F_11[0,1:] -=2.0/3*mu/hx[0,1:]*(\
+            0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+            0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
+        F_11[-1,1:] -=2.0/3*mu/hx[-1,1:]*(\
+            0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
+        
+        F_21[1:-1,1:] -=mu/hx[1:-1,1:]*(\
+            0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+        F_21[0,1:] -=mu/hx[0,1:]*(\
+            0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+            0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
+        F_21[-1,1:] -=mu/hx[-1,1:]*(\
+            0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
+        
+        #   Right faces
+        F_11[1:-1,:-1] +=2.0/3*mu/hx[1:-1,:-1]*(\
+            0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+        F_11[0,:-1] +=2.0/3*mu/hx[0,:-1]*(\
+            0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+            0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
+        F_11[-1,:-1] +=2.0/3*mu/hx[-1,:-1]*(\
+            0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
+        
+        F_21[1:-1,:-1] +=mu/hx[1:-1,:-1]*(\
+            0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+        F_21[0,:-1] +=mu/hx[0,:-1]*(\
+            0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+            0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
+        F_21[-1,:-1] +=mu/hx[-1,:-1]*(\
+            0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
+        
+        # Flux of y gradients in y
+        F_22[1:,:] -=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
+        F_22[:-1,:]+=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
+        
+        F_12[1:,:] -=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]
+        F_12[:-1,:]+=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]
+        
+        # Flux of x gradients in y
+        #   Bottom faces
+        F_22[1:,1:-1] -=2.0/3*mu/hy[1:,1:-1]*(\
+            0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+        F_22[1:,0] -=2.0/3*mu/hy[1:,0]*(\
+            0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+            0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
+        F_22[1:,-1] -=2.0/3*mu/hy[1:,-1]*(\
+            0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
+        
+        F_12[1:,1:-1] -=mu/hy[1:,1:-1]*(\
+            0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+        F_12[1:,0] -=mu/hy[1:,0]*(\
+            0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+            0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+        F_12[1:,-1] -=mu/hy[1:,-1]*(\
+            0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
+        
+        #   Top faces
+        F_22[:-1,1:-1] +=2.0/3*mu/hy[:-1,1:-1]*(\
+            0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+        F_22[:-1,0] +=2.0/3*mu/hy[:-1,0]*(\
+            0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+            0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
+        F_22[:-1,-1] +=2.0/3*mu/hy[:-1,-1]*(\
+            0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
+        
+        F_12[:-1,1:-1] +=mu/hy[:-1,1:-1]*(\
+            0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+        F_12[:-1,0] +=mu/hy[:-1,0]*(\
+            0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+            0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+        F_12[:-1,-1] +=mu/hy[:-1,-1]*(\
+            0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
+        
+#        	# Central differences up to boundaries
+#        self.Domain.tau11[1:-1,1:-1]=2.0/3*mu*(2*(u[1:-1,2:]-u[1:-1,:-2])/(self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])-\
+#           (v[2:,1:-1]-v[:-2,1:-1])/(self.dy[1:-1,1:-1]+self.dy[:-2,1:-1]))
+#        self.Domain.tau12[1:-1,1:-1]=mu*((v[1:-1,2:]-v[1:-1,:-2])/(self.dx[1:-1,1:-1]+self.dx[1:-1,:-2])+\
+#           (u[2:,1:-1]-u[:-2,1:-1])/(self.dy[1:-1,1:-1]+self.dy[:-2,1:-1]))
+#        self.Domain.tau22[1:-1,1:-1]=2.0/3*mu*(2*(v[2:,1:-1]-v[:-2,1:-1])/(self.dy[1:-1,1:-1]+self.dy[:-2,1:-1])-\
+#           (u[1:-1,2:]-u[1:-1,:-2])/(self.dx[1:-1,1:-1]+self.dx[1:-1,:-2]))
        
 #        # Boundary treatments dependent on periodicity
 #        if (self.BCs.BCs['bc_type_north']=='periodic') or (self.BCs.BCs['bc_type_south']=='periodic'):
@@ -333,86 +377,88 @@ class TwoDimPlanarSolve():
         # No periodicity
 #        else:
            # North and south boundary values
-        self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2])-\
-                        (v[1,1:-1]-v[0,1:-1])/dy[0,1:-1])
-        self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])-\
-                        (v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1])
-           
-        if self.BCs.BCs['bc_type_south']=='outlet':
-           self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
-        elif self.BCs.BCs['bc_type_south']=='slip_wall':
-           self.Domain.tau12[0,1:-1] =0
-        else:
-           self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(dx[0,1:-1]+dx[0,:-2])+\
-                        (u[1,1:-1]-u[0,1:-1])/dy[0,1:-1])
-        if self.BCs.BCs['bc_type_north']=='outlet':
-           self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
-        elif self.BCs.BCs['bc_type_north']=='slip_wall':
-           self.Domain.tau12[-1,1:-1]=0
-        else:
-           self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2])+\
-                            (u[-1,1:-1]-u[-2,1:-1])/dy[-1,1:-1])
-           
-        self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/dy[0,1:-1]-\
-                        (u[0,2:]-u[0,:-2])/(dx[0,1:-1]+dx[0,:-2]))
-        self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/dy[-1,1:-1]-\
-                        (u[-1,2:]-u[-1,:-2])/(dx[-1,1:-1]+dx[-1,:-2]))
-        # Left/right boundaries
-        self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/dx[1:-1,0]-\
-                        (v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-        self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1]-\
-                        (v[2:,-1]-v[:-2,-1])/(dy[1:-1,0]+dy[:-2,0]))
-           
-        if self.BCs.BCs['bc_type_left']=='outlet':
-           self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
-        elif self.BCs.BCs['bc_type_left']=='slip_wall':
-           self.Domain.tau12[1:-1,0] =0
-        else:
-           self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/dx[1:-1,0]+\
-                            (u[2:,0]-u[:-2,0])/(dy[1:-1,0]+dy[:-2,0]))
-        if self.BCs.BCs['bc_type_right']=='outlet':
-           self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
-        elif self.BCs.BCs['bc_type_right']=='slip_wall':
-           self.Domain.tau12[1:-1,-1]=0
-        else:
-           self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/dx[1:-1,-1]+\
-                            (u[2:,-1]-u[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1]))
-           
-        self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(dy[1:-1,0]+dy[:-2,0])-\
-                        (u[1:-1,1]-u[1:-1,0])/dx[1:-1,0])
-        self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(dy[1:-1,-1]+dy[:-2,-1])-\
-                        (u[1:-1,-1]-u[1:-1,-2])/dx[1:-1,-1])
-        # Corner treatments
-        self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(dx[0,0])-\
-                        (v[1,0]-v[0,0])/dy[0,0])
-        self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(dx[0,-1])-\
-                        (v[1,-1]-v[0,-1])/dy[0,-1])
-        self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(dx[-1,0])-\
-                        (v[-1,0]-v[-2,0])/dy[-1,0])
-        self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(dx[-1,-1])-\
-                        (v[-1,-1]-v[-2,-1])/dy[-1,-1])
-           
-        self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/dx[0,0]+\
-                        (u[1,0]-u[0,0])/dy[0,0])
-        self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(dx[0,-1])+\
-                        (u[1,-1]-u[0,-1])/dy[0,-1])
-        self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/dx[-1,0]+\
-                        (u[-1,0]-u[-2,0])/dy[-1,0])
-        self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/dx[-1,-1]+\
-                        (u[-1,-1]-u[-2,-1])/dy[-1,-1])
-           
-        self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/dy[0,0]-\
-                        (u[0,1]-u[0,0])/dx[0,0])
-        self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/dy[0,-1]-\
-                        (u[0,-1]-u[0,-2])/dx[0,-1])
-        self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/dy[-1,0]-\
-                        (u[-1,1]-u[-1,0])/dx[-1,0])
-        self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/dy[-1,-1]-\
-                        (u[-1,-1]-u[-1,-2])/dx[-1,-1])
-           
-        self.BCs.Visc_BCs(self.Domain.tau11, self.Domain.tau12, self.Domain.tau22,\
-                         np.ones_like(self.dx), np.ones_like(self.dx))
+#        self.Domain.tau11[0,1:-1] =2.0/3*mu*(2*(u[0,2:]-u[0,:-2])/(self.dx[0,1:-1]+self.dx[0,:-2])-\
+#                        (v[1,1:-1]-v[0,1:-1])/self.dy[0,1:-1])
+#        self.Domain.tau11[-1,1:-1]=2.0/3*mu*(2*(u[-1,2:]-u[-1,:-2])/(self.dx[-1,1:-1]+self.dx[-1,:-2])-\
+#                        (v[-1,1:-1]-v[-2,1:-1])/self.dy[-1,1:-1])
+#           
+#        if self.BCs.BCs['bc_type_south']=='outlet':
+#           self.Domain.tau12[0,1:-1] =self.Domain.tau12[1,1:-1]
+#        elif self.BCs.BCs['bc_type_south']=='slip_wall':
+#           self.Domain.tau12[0,1:-1] =0
+#        else:
+#           self.Domain.tau12[0,1:-1] =mu*((v[0,2:]-v[0,:-2])/(self.dx[0,1:-1]+self.dx[0,:-2])+\
+#                        (u[1,1:-1]-u[0,1:-1])/self.dy[0,1:-1])
+#        if self.BCs.BCs['bc_type_north']=='outlet':
+#           self.Domain.tau12[-1,1:-1]=self.Domain.tau12[-2,1:-1]
+#        elif self.BCs.BCs['bc_type_north']=='slip_wall':
+#           self.Domain.tau12[-1,1:-1]=0
+#        else:
+#           self.Domain.tau12[-1,1:-1]=mu*((v[-1,2:]-v[-1,:-2])/(self.dx[-1,1:-1]+self.dx[-1,:-2])+\
+#                            (u[-1,1:-1]-u[-2,1:-1])/self.dy[-1,1:-1])
+#           
+#        self.Domain.tau22[0,1:-1] =2.0/3*mu*(2*(v[1,1:-1]-v[0,1:-1])/self.dy[0,1:-1]-\
+#                        (u[0,2:]-u[0,:-2])/(self.dx[0,1:-1]+self.dx[0,:-2]))
+#        self.Domain.tau22[-1,1:-1]=2.0/3*mu*(2*(v[-1,1:-1]-v[-2,1:-1])/self.dy[-1,1:-1]-\
+#                        (u[-1,2:]-u[-1,:-2])/(self.dx[-1,1:-1]+self.dx[-1,:-2]))
+#        # Left/right boundaries
+#        self.Domain.tau11[1:-1,0] =2.0/3*mu*(2*(u[1:-1,1]-u[1:-1,0])/self.dx[1:-1,0]-\
+#                        (v[2:,0]-v[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+#        self.Domain.tau11[1:-1,-1]=2.0/3*mu*(2*(u[1:-1,-1]-u[1:-1,-2])/self.dx[1:-1,-1]-\
+#                        (v[2:,-1]-v[:-2,-1])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+#           
+#        if self.BCs.BCs['bc_type_left']=='outlet':
+#           self.Domain.tau12[1:-1,0] =self.Domain.tau12[1:-1,1]
+#        elif self.BCs.BCs['bc_type_left']=='slip_wall':
+#           self.Domain.tau12[1:-1,0] =0
+#        else:
+#           self.Domain.tau12[1:-1,0] =mu*((v[1:-1,1]-v[1:-1,0])/self.dx[1:-1,0]+\
+#                            (u[2:,0]-u[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+#        if self.BCs.BCs['bc_type_right']=='outlet':
+#           self.Domain.tau12[1:-1,-1]=self.Domain.tau12[1:-1,-2]
+#        elif self.BCs.BCs['bc_type_right']=='slip_wall':
+#           self.Domain.tau12[1:-1,-1]=0
+#        else:
+#           self.Domain.tau12[1:-1,-1]=mu*((v[1:-1,-1]-v[1:-1,-2])/self.dx[1:-1,-1]+\
+#                            (u[2:,-1]-u[:-2,-1])/(self.dy[1:-1,-1]+self.dy[:-2,-1]))
+#           
+#        self.Domain.tau22[1:-1,0] =2.0/3*mu*(2*(v[2:,0]-v[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0])-\
+#                        (u[1:-1,1]-u[1:-1,0])/self.dx[1:-1,0])
+#        self.Domain.tau22[1:-1,-1]=2.0/3*mu*(2*(v[2:,-1]-v[:-2,-1])/(self.dy[1:-1,-1]+self.dy[:-2,-1])-\
+#                        (u[1:-1,-1]-u[1:-1,-2])/self.dx[1:-1,-1])
+#        # Corner treatments
+#        self.Domain.tau11[0,0]    =2.0/3*mu*(2*(u[0,1]-u[0,0])/(self.dx[0,0])-\
+#                        (v[1,0]-v[0,0])/self.dy[0,0])
+#        self.Domain.tau11[0,-1]   =2.0/3*mu*(2*(u[0,-1]-u[0,-2])/(self.dx[0,-1])-\
+#                        (v[1,-1]-v[0,-1])/self.dy[0,-1])
+#        self.Domain.tau11[-1,0]   =2.0/3*mu*(2*(u[-1,1]-u[-1,0])/(self.dx[-1,0])-\
+#                        (v[-1,0]-v[-2,0])/self.dy[-1,0])
+#        self.Domain.tau11[-1,-1]  =2.0/3*mu*(2*(u[-1,-1]-u[-1,-2])/(self.dx[-1,-1])-\
+#                        (v[-1,-1]-v[-2,-1])/self.dy[-1,-1])
+#           
+#        self.Domain.tau12[0,0]    =mu*((v[0,1]-v[0,0])/self.dx[0,0]+\
+#                        (u[1,0]-u[0,0])/self.dy[0,0])
+#        self.Domain.tau12[0,-1]   =mu*((v[0,-1]-v[0,-2])/(self.dx[0,-1])+\
+#                        (u[1,-1]-u[0,-1])/self.dy[0,-1])
+#        self.Domain.tau12[-1,0]   =mu*((v[-1,1]-v[-1,0])/self.dx[-1,0]+\
+#                        (u[-1,0]-u[-2,0])/self.dy[-1,0])
+#        self.Domain.tau12[-1,-1]  =mu*((v[-1,-1]-v[-1,-2])/self.dx[-1,-1]+\
+#                        (u[-1,-1]-u[-2,-1])/self.dy[-1,-1])
+#           
+#        self.Domain.tau22[0,0]    =2.0/3*mu*(2*(v[1,0]-v[0,0])/self.dy[0,0]-\
+#                        (u[0,1]-u[0,0])/self.dx[0,0])
+#        self.Domain.tau22[0,-1]   =2.0/3*mu*(2*(v[1,-1]-v[0,-1])/self.dy[0,-1]-\
+#                        (u[0,-1]-u[0,-2])/self.dx[0,-1])
+#        self.Domain.tau22[-1,0]   =2.0/3*mu*(2*(v[-1,0]-v[-2,0])/self.dy[-1,0]-\
+#                        (u[-1,1]-u[-1,0])/self.dx[-1,0])
+#        self.Domain.tau22[-1,-1]  =2.0/3*mu*(2*(v[-1,-1]-v[-2,-1])/self.dy[-1,-1]-\
+#                        (u[-1,-1]-u[-1,-2])/self.dx[-1,-1])
+#           
+#        self.BCs.Visc_BCs(self.Domain.tau11, self.Domain.tau12, self.Domain.tau22,\
+#                         np.ones_like(self.dx), np.ones_like(self.dx))
        
+        return F_11, F_12, F_21, F_22
+        
     # Work via control surface calculation (grad*(sigma*v))
     def Source_CSWork(self, u, v, dx, dy, hx, hy):
         tau11u=self.Domain.tau11*u
@@ -420,8 +466,8 @@ class TwoDimPlanarSolve():
     	tau21v=self.Domain.tau12*v
     	tau22v=self.Domain.tau22*v
     		
-    	work =self.compute_Flux(np.ones_like(dx), tau11u, tau12u, dx, dy, hx, hy, 0, 'LLF')
-    	work+=self.compute_Flux(np.ones_like(dx), tau21v, tau22v, dx, dy, hx, hy, 0, 'LLF')
+    	work =self.compute_Flux_conv(np.ones_like(dx), tau11u, tau12u, hx, hy, 0, 'LLF')
+    	work+=self.compute_Flux_conv(np.ones_like(dx), tau21v, tau22v, hx, hy, 0, 'LLF')
         return work
     
     # Heat conduction gradient source term
@@ -583,7 +629,12 @@ class TwoDimPlanarSolve():
         
         u,v,p,T=self.Domain.primitiveFromConserv(rho_0, rhou_0, rhov_0, rhoE_0)
         lam1,lam2,lam3,lam4=self.eigenval(u,v,T)
-        dt=self.getdt(lam1,lam2,lam3,lam4,T)
+        if self.dt=='None':
+            dt=self.getdt(lam1,lam2,lam3,lam4,T)
+        else:
+#            dt=min(self.dt,self.getdt(lam1,lam2,lam3,lam4,T))
+            dt=self.dt
+        
         if (np.isnan(dt)) or (dt<=0):
 #            print '    Time step size: %f'%dt
             print '*********Diverging time step***********'
@@ -595,32 +646,36 @@ class TwoDimPlanarSolve():
             # Compute primitive variables
             ###################################################################
             u,v,p,T=self.Domain.primitiveFromConserv(rho_c, rhou_c, rhov_c, rhoE_c)
-            
             ###################################################################
             # Compute time deriviatives of conservatives (2nd order central schemes)
             ###################################################################
             # Calculate stress
-            self.Calculate_Stress(u, v, self.dx, self.dy)
+            F11,F12,F21,F22=self.Calculate_Stress(u, v, hx, hy)
 			
             # Density
-            drhodt[step] =self.compute_Flux(rho_c, u, v, self.dx, self.dy, hx, hy, lam1, 'UDS')
+            drhodt[step] =self.compute_Flux_conv(rho_c, u, v, hx, hy, lam1, 'UDS')
             
             # x-momentum (flux, pressure, shear stress, gravity)
-            drhoudt[step] =self.compute_Flux(rhou_c, u, v, self.dx, self.dy, hx, hy, lam2, 'UDS')
-            drhoudt[step]+=self.compute_Flux(p, np.ones_like(u), np.zeros_like(v), self.dx, self.dy, hx, hy, 0, 'LLF')
-            drhoudt[step]+=self.compute_Flux(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, self.dx, self.dy, hx, hy, 0, 'LLF')
+            drhoudt[step] =self.compute_Flux_conv(rhou_c, u, v, hx, hy, lam2, 'UDS')
+            drhoudt[step]+=self.compute_Flux_conv(p, np.ones_like(u), np.zeros_like(v), hx, hy, 0, 'LLF')
+#            drhoudt[step]+=self.compute_Flux_conv(np.ones_like(u), self.Domain.tau11, self.Domain.tau12, hx, hy, 0, 'LLF')
+            drhoudt[step]+=F11+F12
             drhoudt[step]+=rho_c*self.gx
             
             # y-momentum (flux, pressure, shear stress, gravity)
-            drhovdt[step] =self.compute_Flux(rhov_c, u, v, self.dx, self.dy, hx, hy, lam3, 'UDS')
-            drhovdt[step]+=self.compute_Flux(p, np.zeros_like(u), np.ones_like(v), self.dx, self.dy, hx, hy, 0, 'LLF')
-            drhovdt[step]+=self.compute_Flux(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, self.dx, self.dy, hx, hy, 0, 'LLF')
+            drhovdt[step] =self.compute_Flux_conv(rhov_c, u, v, hx, hy, lam3, 'UDS')
+            drhovdt[step]+=self.compute_Flux_conv(p, np.zeros_like(u), np.ones_like(v), hx, hy, 0, 'LLF')
+#            drhovdt[step]+=self.compute_Flux_conv(np.ones_like(v), self.Domain.tau12, self.Domain.tau22, hx, hy, 0, 'LLF')
+            drhovdt[step]+=F21+F22
             drhovdt[step]+=rho_c*self.gy
             
             # Energy (flux, pressure-work, shear-work, conduction, gravity)
-            drhoEdt[step] =self.compute_Flux(rhoE_c, u, v, self.dx, self.dy, hx, hy, lam4, 'UDS')
-            drhoEdt[step]+=self.compute_Flux(p, u, v, self.dx, self.dy, hx, hy, 0, 'LLF')
-            drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy, hx, hy)
+            drhoEdt[step] =self.compute_Flux_conv(rhoE_c, u, v, hx, hy, lam4, 'UDS')
+            drhoEdt[step]+=self.compute_Flux_conv(p, u, v, hx, hy, 0, 'LLF')
+            drhoEdt[step]+=self.compute_Flux_conv(self.Domain.tau11, u, np.zeros_like(v), hx, hy, 0, 'LLF')
+            drhoEdt[step]+=self.compute_Flux_conv(self.Domain.tau12, u, v, hx, hy, 0, 'LLF')
+            drhoEdt[step]+=self.compute_Flux_conv(self.Domain.tau22, np.zeros_like(u), v, hx, hy, 0, 'LLF')
+#            drhoEdt[step]+=self.Source_CSWork(u, v, self.dx, self.dy, hx, hy)
             drhoEdt[step]-=self.Source_Cond(T, self.dx, self.dy, hx, hy)
             drhoEdt[step]+=rho_c*(self.gx*u + self.gy*v)
 

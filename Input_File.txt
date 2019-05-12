@@ -48,16 +48,19 @@ bias_size_y:0.0005
 ######################################################
 
 CFL:0.1
-total_time_steps:1
+dt:1e-11
+total_time_steps:100
 total_time:None
 Time_Scheme:RK2
 Number_Data_Output:1
 
 ######################################################
 #			Boundary conditions
+# [type] -  specify with these key phrases separated by _
 #	'periodic': no properties need to be specified
 #	'wall': specify T, ('grad',[value]); no slip and dp=0 enforced implicitly
-#	'slip_wall': specify T as value or ('grad', [value]); rest is enforced implicitly
+#	'slip': used with wall will imply slip-wall
+#	'adiabatic': used with wall will make adiabatic wall
 #	'outlet': specify pressure; rest is calculated from interior points
 #	'inlet': specify velocities, temperature and pressure
 #  [IN PROGRESS] Profiles possible; must be same size as number of nodes on that boundary

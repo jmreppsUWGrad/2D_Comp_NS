@@ -220,6 +220,8 @@ solver=Solvers.TwoDimPlanarSolve(domain, settings, BCs)
 print '################################'
 print 'Initializing domain...'
 hx,hy=domain.CV_dim()
+solver.BCs.hx=hx
+solver.BCs.hy=hy
 
 T=np.zeros((domain.Ny,domain.Nx))
 u=np.zeros((domain.Ny,domain.Nx))

@@ -27,84 +27,173 @@ class BCs():
         self.dx,self.dy=dx,dy
         self.R=settings['R']
         self.gamma=settings['gamma']
+        self.mu=settings['mu']
         self.Cv=self.R/(self.gamma-1)
+        self.hx,self.hy=dx,dy
+        self.k=settings['k']
+    
+    # Interpolation function (copied from solver object)
+    def interpolate(self, k1, k2, func):
+        if func=='Linear':
+            return 0.5*k1+0.5*k2
+        else:
+            return 2*k1*k2/(k1+k2)
     
     # Apply BCs to stress and heat transfer (viscous BCs)
-    def Visc_BCs(self, tau11, tau12, tau22, qx, qy):
+    # u,v are velocities if doing viscous stresses, u is temp if qx/qy
+    # Boundary tau or q are implied 0 if nothing done
+    def Visc_BCs(self, tau11, tau12, tau21, tau22, qx, qy, u, v):
         # Start with wall BCs
         
         # Left face
-        if st.find(self.BCs['bc_type_left'], 'slip')>=0:
-           tau12[:,0]=0
+#        if st.find(self.BCs['bc_type_left'], 'slip')>=0:
+#           tau12[:,0]=0
        
-        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
-            qx[:,0]=0
+#        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
+#            qx[:,0]=0
             
         if st.find(self.BCs['bc_type_left'], 'outlet')>=0:
-            tau12[:,0]=tau12[:,1]
-            qx[:,0]=qx[:,1]
-        
-        # Periodic boundary       
-#        else:
-#            rho[:,0] =rho[:,-1]
-#            rhou[:,0]=rhou[:,-1]
-#            rhov[:,0]=rhov[:,-1]
-#            rhoE[:,0]=rhoE[:,-1]
+            tau12[:,0]=0
+            qx[:,0]=0
         
         # Right face
-        if st.find(self.BCs['bc_type_right'], 'slip')>=0:
-           tau12[:,-1]=0
+#        if st.find(self.BCs['bc_type_right'], 'slip')>=0:
+#           tau12[:,-1]=0
        
-        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
-            qx[:,-1]=0
+#        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
+#            qx[:,-1]=0
             
         if st.find(self.BCs['bc_type_right'], 'outlet')>=0:
-            tau12[:,-1]=tau12[:,-2]
-            qx[:,-1]=qx[:,-2]
+            tau12[:,-1]=0
+            qx[:,-1]=0
         
-        # Periodic boundary 
-#        else:
-#            rho[:,-1] =rho[:,0]
-#            rhou[:,-1]=rhou[:,0]
-#            rhov[:,-1]=rhov[:,0]
-#            rhoE[:,-1]=rhoE[:,0]
+        # Periodic BCs on left/right faces
+        if st.find(self.BCs['bc_type_left'], 'periodic')>=0\
+            or st.find(self.BCs['bc_type_right'], 'periodic')>=0:
+            # Heat flux
+            qx[:,0]   += (self.k*(u[:,-1]-u[:,0])/self.dx[:,0])/self.hx[:,0]
+            qx[:,-1]  += (self.k*(u[:,0]-u[:,-1])/self.dx[:,-1])/self.hx[:,-1]
             
-        # South face
-        if st.find(self.BCs['bc_type_south'], 'slip')>=0:
-            tau12[0,:]=0
+            # Flux of x gradients in x
+            tau11[:,0] -=4.0/3*self.mu/self.hx[:,0]*(u[:,0]-u[:,-1])/self.dx[:,0]
+            tau11[:,-1]+=4.0/3*self.mu/self.hx[:,-1]*(u[:,0]-u[:,-1])/self.dx[:,-1]
+            
+            tau21[:,0] -=self.mu/self.hx[:,0]*(v[:,0]-v[:,-1])/self.dx[:,0]
+            tau21[:,-1]+=self.mu/self.hx[:,-1]*(v[:,0]-v[:,-1])/self.dx[:,-1]
+            
+            # Flux of y gradients in x
+            #   Left faces
+            tau11[1:-1,0] -=2.0/3*self.mu/self.hx[1:-1,0]*(\
+                0.5*(v[2:,-1]-v[:-2,-1])/(self.dy[1:-1,-1]+self.dy[:-2,-1])+\
+                0.5*(v[2:,0]-v[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+            tau11[0,0] -=2.0/3*self.mu/self.hx[0,0]*(\
+                0.5*(v[1,-1]-v[0,-1])/self.dy[0,-1]+\
+                0.5*(v[1,0]-v[0,0])/self.dy[0,0])
+            tau11[-1,0] -=2.0/3*self.mu/self.hx[-1,0]*(\
+                0.5*(v[-1,-1]-v[-2,-1])/self.dy[-1,-1]+\
+                0.5*(v[-1,0]-v[-2,0])/self.dy[-1,0])
+            
+            tau21[1:-1,0] -=self.mu/self.hx[1:-1,0]*(\
+                0.5*(u[2:,-1]-u[:-2,-1])/(self.dy[1:-1,0]+self.dy[:-2,-1])+\
+                0.5*(u[2:,0]-u[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+            tau21[0,0] -=self.mu/self.hx[0,0]*(\
+                0.5*(u[1,-1]-u[0,-1])/self.dy[0,-1]+\
+                0.5*(u[1,0]-u[0,0])/self.dy[0,0])
+            tau21[-1,1:] -=self.mu/self.hx[-1,1:]*(\
+                0.5*(u[-1,-1]-u[-2,-1])/self.dy[-1,-1]+\
+                0.5*(u[-1,0]-u[-2,0])/self.dy[-1,0])
+            
+            #   Right faces ################################################ up to here should be good
+            tau11[1:-1,-1] +=2.0/3*self.mu/self.hx[1:-1,-1]*(\
+                0.5*(v[2:,-1]-v[:-2,-1])/(self.dy[1:-1,-1]+self.dy[:-2,-1])+\
+                0.5*(v[2:,0]-v[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+            tau11[0,-1] +=2.0/3*self.mu/self.hx[0,-1]*(\
+                0.5*(v[1,-1]-v[0,-1])/self.dy[0,-1]+\
+                0.5*(v[1,0]-v[0,0])/self.dy[0,0])
+            tau11[-1,-1] +=2.0/3*self.mu/self.hx[-1,:-1]*(\
+                0.5*(v[-1,-1]-v[-2,-1])/self.dy[-1,-1]+\
+                0.5*(v[-1,0]-v[-2,0])/self.dy[-1,0])
+            
+            tau21[1:-1,-1] +=self.mu/self.hx[1:-1,-1]*(\
+                0.5*(u[2:,-1]-u[:-2,-1])/(self.dy[1:-1,-1]+self.dy[:-2,-1])+\
+                0.5*(u[2:,0]-u[:-2,0])/(self.dy[1:-1,0]+self.dy[:-2,0]))
+            tau21[0,-1] +=self.mu/self.hx[0,-1]*(\
+                0.5*(u[1,-1]-u[0,-1])/self.dy[0,-1]+\
+                0.5*(u[1,0]-u[0,0])/self.dy[0,0])
+            tau21[-1,-1] +=self.mu/self.hx[-1,-1]*(\
+                0.5*(u[-1,-1]-u[-2,-1])/self.dy[-1,-1]+\
+                0.5*(u[-1,0]-u[-2,0])/self.dy[-1,0])
+            
+            # Flux of x gradients in y
+            #   Bottom faces
+            tau22[1:,1:-1] -=2.0/3*self.mu/self.hy[1:,1:-1]*(\
+                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+            tau22[1:,0] -=2.0/3*self.mu/self.hy[1:,0]*(\
+                0.5*(u[:-1,0]-u[:-1,-1])/self.dx[:-1,0]+\
+                0.5*(u[1:,0]-u[1:,-1])/self.dx[1:,0])
+            tau22[1:,-1] -=2.0/3*self.mu/self.hy[1:,-1]*(\
+                0.5*(u[:-1,0]-u[:-1,-1])/self.dx[:-1,-1]+\
+                0.5*(u[1:,0]-u[1:,-1])/self.dx[1:,-1])
+            
+            tau12[1:,1:-1] -=self.mu/self.hy[1:,1:-1]*(\
+                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+            tau12[1:,0] -=self.mu/self.hy[1:,0]*(\
+                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+            tau12[1:,-1] -=self.mu/self.hy[1:,-1]*(\
+                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
+            
+            #   Top faces
+            tau22[:-1,1:-1] +=2.0/3*self.mu/self.hy[:-1,1:-1]*(\
+                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+            tau22[:-1,0] +=2.0/3*self.mu/self.hy[:-1,0]*(\
+                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
+            tau22[:-1,-1] +=2.0/3*self.mu/self.hy[:-1,-1]*(\
+                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
+            
+            tau12[:-1,1:-1] +=self.mu/self.hy[:-1,1:-1]*(\
+                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+            tau12[:-1,0] +=self.mu/self.hy[:-1,0]*(\
+                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+            tau12[:-1,-1] +=self.mu/self.hy[:-1,-1]*(\
+                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
         
-        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
-            qy[0,:]=0
+        # South face
+#        if st.find(self.BCs['bc_type_south'], 'slip')>=0:
+#            tau12[0,:]=0
+        
+#        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
+#            qy[0,:]=0
         
         if st.find(self.BCs['bc_type_south'], 'outlet')>=0:
-            tau12[0,:]=tau12[1,:]
-            qy[0,:]=qy[1,:]
+            tau12[0,:]=0
+            qy[0,:]=0
         
-        # Periodic boundary       
-#        else:
-#            rho[0,:] =rho[-1,:]
-#            rhou[0,:]=rhou[-1,:]
-#            rhov[0,:]=rhov[-1,:]
-#            rhoE[0,:]=rhoE[-1,:]
-            
         # North face
-        if st.find(self.BCs['bc_type_north'], 'slip_wall')>=0:
-            tau12[-1,:]=0
+#        if st.find(self.BCs['bc_type_north'], 'slip_wall')>=0:
+#            tau12[-1,:]=0
         
-        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
-            qy[-1,:]=0
+#        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
+#            qy[-1,:]=0
         
         if st.find(self.BCs['bc_type_north'], 'outlet')>=0:
-            tau12[-1,:]=tau12[-2,:]
-            qy[-1,:]=qy[-2,:]
+            tau12[-1,:]=0
+            qy[-1,:]=0
         
-        # Periodic boundary       
-#        else:
-#            rho[-1,:] =rho[0,:]
-#            rhou[-1,:]=rhou[0,:]
-#            rhov[-1,:]=rhov[0,:]
-#            rhoE[-1,:]=rhoE[0,:]
-    
+#        # Periodic boundary       
+#        if st.find(self.BCs['bc_type_north'], 'periodic')>=0\
+#            or st.find(self.BCs['bc_type_south'], 'periodic')>=0:
+            
+            
     # Apply conservative BCs (inviscid BCs)
     def Apply_BCs(self, rho, rhou, rhov, rhoE, u, v, p, T):
         # Start with wall BCs
@@ -152,11 +241,13 @@ class BCs():
             rhoE[:,0]=p[:,0]/(self.gamma-1)+rho[:,0]*0.5*(u[:,0]**2+v[:,0]**2)
         
         # Periodic boundary       
-        else:
-            rho[:,0] =rho[:,-1]
-            rhou[:,0]=rhou[:,-1]
-            rhov[:,0]=rhov[:,-1]
-            rhoE[:,0]=rhoE[:,-1]
+#        else:
+#            rho[:,0] +=1.0/(2*self.hx[:,0])*self.interpolate(rho[:,0],rho[:,-1],'Linear')\
+#                *self.interpolate(u[:,0], u[:,-1],'Linear')#\
+##                -LLF*lam*(u[:,1:]-u[:,:-1])
+#            rhou[:,0]=rhou[:,-1]
+#            rhov[:,0]=rhov[:,-1]
+#            rhoE[:,0]=rhoE[:,-1]
         
         # Right face
         if self.BCs['bc_type_right']=='wall':
@@ -197,11 +288,11 @@ class BCs():
             p[:,-1]=self.BCs['bc_right_p']
             rhoE[:,-1]=p[:,-1]/(self.gamma-1)+rho[:,-1]*0.5*(u[:,-1]**2+v[:,-1]**2)
         
-        else:
-            rho[:,-1] =rho[:,0]
-            rhou[:,-1]=rhou[:,0]
-            rhov[:,-1]=rhov[:,0]
-            rhoE[:,-1]=rhoE[:,0]
+#        else:
+#            rho[:,-1] =rho[:,0]
+#            rhou[:,-1]=rhou[:,0]
+#            rhov[:,-1]=rhov[:,0]
+#            rhoE[:,-1]=rhoE[:,0]
             
         # South face
         if self.BCs['bc_type_south']=='wall':
@@ -239,11 +330,11 @@ class BCs():
             rhoE[0,:]=p[0,:]/(self.gamma-1)+rho[0,:]*0.5*(u[0,:]**2+v[0,:]**2)
         
         # Periodic boundary       
-        else:
-            rho[0,:] =rho[-1,:]
-            rhou[0,:]=rhou[-1,:]
-            rhov[0,:]=rhov[-1,:]
-            rhoE[0,:]=rhoE[-1,:]
+#        else:
+#            rho[0,:] =rho[-1,:]
+#            rhou[0,:]=rhou[-1,:]
+#            rhov[0,:]=rhov[-1,:]
+#            rhoE[0,:]=rhoE[-1,:]
             
         # North face
         if self.BCs['bc_type_north']=='wall':
@@ -281,8 +372,8 @@ class BCs():
             rhoE[-1,:]=p[-1,:]/(self.gamma-1)+0.5*rho[-1,:]*(u[-1,:]**2+v[-1,:]**2)
         
         # Periodic boundary       
-        else:
-            rho[-1,:] =rho[0,:]
-            rhou[-1,:]=rhou[0,:]
-            rhov[-1,:]=rhov[0,:]
-            rhoE[-1,:]=rhoE[0,:]
+#        else:
+#            rho[-1,:] =rho[0,:]
+#            rhou[-1,:]=rhou[0,:]
+#            rhov[-1,:]=rhov[0,:]
+#            rhoE[-1,:]=rhoE[0,:]

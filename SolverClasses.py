@@ -53,7 +53,7 @@ class TwoDimPlanarSolve():
         lam2=u
         lam3=v
         lam4=max(np.amax(u+c),np.amax(v+c))
-        return max(lam1,0), np.amax(lam2), np.amax(lam3), lam4
+        return lam1, np.amax(lam2), np.amax(lam3), lam4
     
     # Time step check with dx, dy, T and CFL number
     def getdt(self, lam1, lam2, lam3, lam4, T):
@@ -121,18 +121,18 @@ class TwoDimPlanarSolve():
 #               -lam*(v[1:,-1]-v[:-1,-1]))
         
         if (self.BCs.BCs['bc_type_left']=='periodic') or (self.BCs.BCs['bc_type_right']=='periodic'):
-            ddx[:,0] +=1.0/(2*hx[:,0])*self.interpolate(rho[:,0],rho[:,-1],'Linear')\
+            ddx[:,0] +=1.0/hx[:,0]*self.interpolate(rho[:,0],rho[:,-1],'Linear')\
                 *self.interpolate(u[:,0], u[:,-1],'Linear')#\
 #                -LLF*lam*(u[:,1:]-u[:,:-1])
-            ddx[:,-1]-=1.0/(2*hx[:,-1])*self.interpolate(rho[:,0],rho[:,-1],'Linear')\
+            ddx[:,-1]-=1.0/hx[:,-1]*self.interpolate(rho[:,0],rho[:,-1],'Linear')\
                 *self.interpolate(u[:,0], u[:,-1],'Linear')#\
 #                -LLF*lam*(u[:,1:]-u[:,:-1])
 
         if (self.BCs.BCs['bc_type_north']=='periodic') or (self.BCs.BCs['bc_type_south']=='periodic'):
-            ddy[0,:] +=1.0/(2*hy[0,:])*self.interpolate(rho[0,:],rho[-1,:],'Linear')\
+            ddy[0,:] +=1.0/hy[0,:]*self.interpolate(rho[0,:],rho[-1,:],'Linear')\
                *self.interpolate(v[0,:],v[-1,:],'Linear')#\
 #               -LLF*lam*(v[1:,:]-v[:-1,:])
-            ddy[-1,:]-=1.0/(2*hy[-1,:])*self.interpolate(rho[0,:],rho[-1,:],'Linear')\
+            ddy[-1,:]-=1.0/hy[-1,:]*self.interpolate(rho[0,:],rho[-1,:],'Linear')\
                *self.interpolate(v[0,:],v[-1,:],'Linear')#\
 #               -LLF*lam*(v[1:,:]-v[:-1,:])
         
@@ -140,6 +140,12 @@ class TwoDimPlanarSolve():
     
     # Shear stress calculation (flux of stress)
     def Calculate_Stress(self, u, v, hx, hy, isWork):
+        if isWork:
+            uw=u
+            vw=v
+        else:
+            uw=np.ones_like(u)
+            vw=np.ones_like(v)
         mu=self.Domain.mu
         F_11=np.zeros_like(self.dx) # Flux of tau11
         F_12=np.zeros_like(self.dx) # Flux of tau12
@@ -147,243 +153,259 @@ class TwoDimPlanarSolve():
         F_22=np.zeros_like(self.dx) # Flux of tau22
         
         ################## Viscous stress flux ##########################
-        if not isWork:
-            # Flux of x gradients in x
-            F_11[:,1:] -=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
-            F_11[:,:-1]+=4.0/3*mu/hx[:,:-1]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
+#        if not isWork:
+#            ############## tau 11 flux (d/dx)
+#            # Left face
+#            F_11[:,1:]    -=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
+#                # y gradients
+#            F_11[1:-1,1:] -=2.0/3*mu/hx[1:-1,1:]*(\
+#                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+#                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+#            F_11[0,1:]    -=2.0/3*mu/hx[0,1:]*(\
+#                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+#                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
+#            F_11[-1,1:]  -=2.0/3*mu/hx[-1,1:]*(\
+#                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+#                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
+#            
+#            # Right face
+#            F_11[:,:-1]+=4.0/3*mu/hx[:,:-1]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]
+#                # y gradients
+#            F_11[1:-1,:-1] +=2.0/3*mu/hx[1:-1,:-1]*(\
+#                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+#                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+#            F_11[0,:-1] +=2.0/3*mu/hx[0,:-1]*(\
+#                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+#                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
+#            F_11[-1,:-1] +=2.0/3*mu/hx[-1,:-1]*(\
+#                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+#                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
+#            
+#            ############## tau 21 flux (d/dx)
+#            # Left face
+#            F_21[:,1:] -=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
+#                # y gradients
+#            F_21[1:-1,1:] -=mu/hx[1:-1,1:]*(\
+#                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+#                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+#            F_21[0,1:] -=mu/hx[0,1:]*(\
+#                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+#                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
+#            F_21[-1,1:] -=mu/hx[-1,1:]*(\
+#                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+#                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
+#            
+#            # Right face
+#            F_21[:,:-1]+=mu/hx[:,:-1]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
+#                # y gradients
+#            F_21[1:-1,:-1] +=mu/hx[1:-1,:-1]*(\
+#                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+#                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
+#            F_21[0,:-1] +=mu/hx[0,:-1]*(\
+#                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+#                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
+#            F_21[-1,:-1] +=mu/hx[-1,:-1]*(\
+#                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+#                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
+#            
+#            ############## tau 12 flux (d/dy)
+#            # Bottom face
+#            F_12[1:,:] -=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]
+#                # x gradients
+#            F_12[1:,1:-1] -=mu/hy[1:,1:-1]*(\
+#                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+#                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+#            F_12[1:,0] -=mu/hy[1:,0]*(\
+#                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+#                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+#            F_12[1:,-1] -=mu/hy[1:,-1]*(\
+#                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+#                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
+#            # Top face
+#            F_12[:-1,:]+=mu/hy[:-1,:]*(u[:-1,:]-u[:-1,:])/self.dy[:-1,:]
+#                # x gradients
+#            F_12[:-1,1:-1] +=mu/hy[:-1,1:-1]*(\
+#                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+#                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+#            F_12[:-1,0] +=mu/hy[:-1,0]*(\
+#                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+#                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
+#            F_12[:-1,-1] +=mu/hy[:-1,-1]*(\
+#                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+#                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
+#            
+#            ############## tau 22 flux (d/dy)
+#            # Bottom face
+#            F_22[1:,:] -=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
+#                # x gradients
+#            F_22[1:,1:-1] -=2.0/3*mu/hy[1:,1:-1]*(\
+#                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+#                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+#            F_22[1:,0] -=2.0/3*mu/hy[1:,0]*(\
+#                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+#                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
+#            F_22[1:,-1] -=2.0/3*mu/hy[1:,-1]*(\
+#                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+#                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
+#            
+#            # Top face
+#            F_22[:-1,:]+=4.0/3*mu/hy[:-1,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
+#                # x gradients
+#            F_22[:-1,1:-1] +=2.0/3*mu/hy[:-1,1:-1]*(\
+#                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+#                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
+#            F_22[:-1,0] +=2.0/3*mu/hy[:-1,0]*(\
+#                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+#                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
+#            F_22[:-1,-1] +=2.0/3*mu/hy[:-1,-1]*(\
+#                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+#                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
             
-            F_21[:,1:] -=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
-            F_21[:,:-1]+=mu/hx[:,:-1]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]
             
-            # Flux of y gradients in x
-            #   Left faces
-            F_11[1:-1,1:] -=2.0/3*mu/hx[1:-1,1:]*(\
-                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
-            F_11[0,1:] -=2.0/3*mu/hx[0,1:]*(\
-                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
-                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
-            F_11[-1,1:] -=2.0/3*mu/hx[-1,1:]*(\
-                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
-            
-            F_21[1:-1,1:] -=mu/hx[1:-1,1:]*(\
-                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
-            F_21[0,1:] -=mu/hx[0,1:]*(\
-                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
-                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
-            F_21[-1,1:] -=mu/hx[-1,1:]*(\
-                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
-            
-            #   Right faces
-            F_11[1:-1,:-1] +=2.0/3*mu/hx[1:-1,:-1]*(\
-                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
-            F_11[0,:-1] +=2.0/3*mu/hx[0,:-1]*(\
-                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
-                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])
-            F_11[-1,:-1] +=2.0/3*mu/hx[-1,:-1]*(\
-                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])
-            
-            F_21[1:-1,:-1] +=mu/hx[1:-1,:-1]*(\
-                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))
-            F_21[0,:-1] +=mu/hx[0,:-1]*(\
-                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
-                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])
-            F_21[-1,:-1] +=mu/hx[-1,:-1]*(\
-                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])
-            
-            # Flux of y gradients in y
-            F_22[1:,:] -=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
-            F_22[:-1,:]+=4.0/3*mu/hy[:-1,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]
-            
-            F_12[1:,:] -=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]
-            F_12[:-1,:]+=mu/hy[1:,:]*(u[:-1,:]-u[:-1,:])/self.dy[:-1,:]
-            
-            # Flux of x gradients in y
-            #   Bottom faces
-            F_22[1:,1:-1] -=2.0/3*mu/hy[1:,1:-1]*(\
-                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
-            F_22[1:,0] -=2.0/3*mu/hy[1:,0]*(\
-                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
-                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
-            F_22[1:,-1] -=2.0/3*mu/hy[1:,-1]*(\
-                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
-            
-            F_12[1:,1:-1] -=mu/hy[1:,1:-1]*(\
-                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
-            F_12[1:,0] -=mu/hy[1:,0]*(\
-                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
-                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
-            F_12[1:,-1] -=mu/hy[1:,-1]*(\
-                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
-            
-            #   Top faces
-            F_22[:-1,1:-1] +=2.0/3*mu/hy[:-1,1:-1]*(\
-                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
-            F_22[:-1,0] +=2.0/3*mu/hy[:-1,0]*(\
-                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
-                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])
-            F_22[:-1,-1] +=2.0/3*mu/hy[:-1,-1]*(\
-                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])
-            
-            F_12[:-1,1:-1] +=mu/hy[:-1,1:-1]*(\
-                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))
-            F_12[:-1,0] +=mu/hy[:-1,0]*(\
-                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
-                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])
-            F_12[:-1,-1] +=mu/hy[:-1,-1]*(\
-                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])
-        
         ################## Control surface work ##########################
-        else:
-            # Flux of x gradients in x
-            F_11[:,1:] -=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]\
-                *self.interpolate(u[:,1:],u[:,:-1], 'Linear')
-            F_11[:,:-1]+=4.0/3*mu/hx[:,:-1]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]\
-                *self.interpolate(u[:,1:],u[:,:-1], 'Linear')
-            
-            F_21[:,1:] -=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]\
-                *self.interpolate(v[:,1:],v[:,:-1], 'Linear')
-            F_21[:,:-1]+=mu/hx[:,:-1]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]\
-                *self.interpolate(v[:,1:],v[:,:-1], 'Linear')
-            
-            # Flux of y gradients in x
-            #   Left faces
-            F_11[1:-1,1:] -=2.0/3*mu/hx[1:-1,1:]*(\
-                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
-                *self.interpolate(u[1:-1,1:],u[1:-1,:-1], 'Linear')
-            F_11[0,1:] -=2.0/3*mu/hx[0,1:]*(\
-                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
-                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])\
-                *self.interpolate(u[0,1:],u[0,:-1], 'Linear')
-            F_11[-1,1:] -=2.0/3*mu/hx[-1,1:]*(\
-                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])\
-                *self.interpolate(u[-1,1:],u[-1,:-1], 'Linear')
-            
-            F_21[1:-1,1:] -=mu/hx[1:-1,1:]*(\
-                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
-                *self.interpolate(v[1:-1,1:],v[1:-1,:-1], 'Linear')
-            F_21[0,1:] -=mu/hx[0,1:]*(\
-                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
-                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])\
-                *self.interpolate(v[0,1:],v[0,:-1], 'Linear')
-            F_21[-1,1:] -=mu/hx[-1,1:]*(\
-                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])\
-                *self.interpolate(v[-1,1:],v[-1,:-1], 'Linear')
-            
-            #   Right faces
-            F_11[1:-1,:-1] +=2.0/3*mu/hx[1:-1,:-1]*(\
-                0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
-                *self.interpolate(u[1:-1,1:],u[1:-1,:-1], 'Linear')
-            F_11[0,:-1] +=2.0/3*mu/hx[0,:-1]*(\
-                0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
-                0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])\
-                *self.interpolate(u[0,1:],u[0,:-1], 'Linear')
-            F_11[-1,:-1] +=2.0/3*mu/hx[-1,:-1]*(\
-                0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])\
-                *self.interpolate(u[-1,1:],u[-1,:-1], 'Linear')
-            
-            F_21[1:-1,:-1] +=mu/hx[1:-1,:-1]*(\
-                0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
-                0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
-                *self.interpolate(v[1:-1,1:],v[1:-1,:-1], 'Linear')
-            F_21[0,:-1] +=mu/hx[0,:-1]*(\
-                0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
-                0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])\
-                *self.interpolate(v[0,1:],v[0,:-1], 'Linear')
-            F_21[-1,:-1] +=mu/hx[-1,:-1]*(\
-                0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
-                0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])\
-                *self.interpolate(v[-1,1:],v[-1,:-1], 'Linear')
-            
-            # Flux of y gradients in y
-            F_22[1:,:] -=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]\
-                *self.interpolate(v[1:,:],v[:-1,:], 'Linear')
-            F_22[:-1,:]+=4.0/3*mu/hy[:-1,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]\
-                *self.interpolate(v[1:,:],v[:-1,:], 'Linear')
-            
-            F_12[1:,:] -=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]\
-                *self.interpolate(u[1:,:],u[:-1,:], 'Linear')
-            F_12[:-1,:]+=mu/hy[1:,:]*(u[:-1,:]-u[:-1,:])/self.dy[:-1,:]\
-                *self.interpolate(u[1:,:],u[:-1,:], 'Linear')
-            
-            # Flux of x gradients in y
-            #   Bottom faces
-            F_22[1:,1:-1] -=2.0/3*mu/hy[1:,1:-1]*(\
-                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
-                *self.interpolate(v[1:,1:-1],v[:-1,1:-1], 'Linear')
-            F_22[1:,0] -=2.0/3*mu/hy[1:,0]*(\
-                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
-                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])\
-                *self.interpolate(v[1:,0],v[:-1,0], 'Linear')
-            F_22[1:,-1] -=2.0/3*mu/hy[1:,-1]*(\
-                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])\
-                *self.interpolate(v[1:,-1],v[:-1,-1], 'Linear')
-            
-            F_12[1:,1:-1] -=mu/hy[1:,1:-1]*(\
-                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
-                *self.interpolate(u[1:,1:-1],u[:-1,1:-1], 'Linear')
-            F_12[1:,0] -=mu/hy[1:,0]*(\
-                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
-                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])\
-                *self.interpolate(u[1:,0],u[:-1,0], 'Linear')
-            F_12[1:,-1] -=mu/hy[1:,-1]*(\
-                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])\
-                *self.interpolate(u[1:,-1],u[:-1,-1], 'Linear')
-            
-            #   Top faces
-            F_22[:-1,1:-1] +=2.0/3*mu/hy[:-1,1:-1]*(\
-                0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
-                *self.interpolate(v[1:,1:-1],v[:-1,1:-1], 'Linear')
-            F_22[:-1,0] +=2.0/3*mu/hy[:-1,0]*(\
-                0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
-                0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])\
-                *self.interpolate(v[1:,0],v[:-1,0], 'Linear')
-            F_22[:-1,-1] +=2.0/3*mu/hy[:-1,-1]*(\
-                0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])\
-                *self.interpolate(v[1:,-1],v[:-1,-1], 'Linear')
-            
-            F_12[:-1,1:-1] +=mu/hy[:-1,1:-1]*(\
-                0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
-                0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
-                *self.interpolate(u[1:,1:-1],u[:-1,1:-1], 'Linear')
-            F_12[:-1,0] +=mu/hy[:-1,0]*(\
-                0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
-                0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])\
-                *self.interpolate(u[1:,0],u[:-1,0], 'Linear')
-            F_12[:-1,-1] +=mu/hy[:-1,-1]*(\
-                0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
-                0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])\
-                *self.interpolate(u[1:,-1],u[:-1,-1], 'Linear')
+#        else:
+        ############## tau 11*u flux (d/dx)
+        # Left face
+        F_11[:,1:] -=4.0/3*mu/hx[:,1:]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]\
+            *self.interpolate(uw[:,1:],uw[:,:-1], 'Linear')
+            # y gradients
+        F_11[1:-1,1:] -=2.0/3*mu/hx[1:-1,1:]*(\
+            0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
+            *self.interpolate(uw[1:-1,1:],uw[1:-1,:-1], 'Linear')
+        F_11[0,1:] -=2.0/3*mu/hx[0,1:]*(\
+            0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+            0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])\
+            *self.interpolate(uw[0,1:],uw[0,:-1], 'Linear')
+        F_11[-1,1:] -=2.0/3*mu/hx[-1,1:]*(\
+            0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])\
+            *self.interpolate(uw[-1,1:],uw[-1,:-1], 'Linear')
         
+        # Right face
+        F_11[:,:-1]+=4.0/3*mu/hx[:,:-1]*(u[:,1:]-u[:,:-1])/self.dx[:,:-1]\
+            *self.interpolate(u[:,1:],u[:,:-1], 'Linear')
+            # y gradients
+        F_11[1:-1,:-1] +=2.0/3*mu/hx[1:-1,:-1]*(\
+            0.5*(v[2:,:-1]-v[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(v[2:,1:]-v[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
+            *self.interpolate(uw[1:-1,1:],uw[1:-1,:-1], 'Linear')
+        F_11[0,:-1] +=2.0/3*mu/hx[0,:-1]*(\
+            0.5*(v[1,:-1]-v[0,:-1])/self.dy[0,:-1]+\
+            0.5*(v[1,1:]-v[0,1:])/self.dy[0,1:])\
+            *self.interpolate(uw[0,1:],uw[0,:-1], 'Linear')
+        F_11[-1,:-1] +=2.0/3*mu/hx[-1,:-1]*(\
+            0.5*(v[-1,:-1]-v[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(v[-1,1:]-v[-2,1:])/self.dy[-1,1:])\
+            *self.interpolate(uw[-1,1:],uw[-1,:-1], 'Linear')
+        
+        ############## tau 21*v flux (d/dx)
+        # Left face
+        F_21[:,1:] -=mu/hx[:,1:]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]\
+            *self.interpolate(vw[:,1:],vw[:,:-1], 'Linear')
+            # y gradients
+        F_21[1:-1,1:] -=mu/hx[1:-1,1:]*(\
+            0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
+            *self.interpolate(vw[1:-1,1:],vw[1:-1,:-1], 'Linear')
+        F_21[0,1:] -=mu/hx[0,1:]*(\
+            0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+            0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])\
+            *self.interpolate(vw[0,1:],vw[0,:-1], 'Linear')
+        F_21[-1,1:] -=mu/hx[-1,1:]*(\
+            0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])\
+            *self.interpolate(vw[-1,1:],vw[-1,:-1], 'Linear')
+        
+        # Right face
+        F_21[:,:-1]+=mu/hx[:,:-1]*(v[:,1:]-v[:,:-1])/self.dx[:,:-1]\
+            *self.interpolate(vw[:,1:],vw[:,:-1], 'Linear')
+            # y gradients
+        F_21[1:-1,:-1] +=mu/hx[1:-1,:-1]*(\
+            0.5*(u[2:,:-1]-u[:-2,:-1])/(self.dy[1:-1,:-1]+self.dy[:-2,:-1])+\
+            0.5*(u[2:,1:]-u[:-2,1:])/(self.dy[1:-1,1:]+self.dy[:-2,1:]))\
+            *self.interpolate(vw[1:-1,1:],vw[1:-1,:-1], 'Linear')
+        F_21[0,:-1] +=mu/hx[0,:-1]*(\
+            0.5*(u[1,:-1]-u[0,:-1])/self.dy[0,:-1]+\
+            0.5*(u[1,1:]-u[0,1:])/self.dy[0,1:])\
+            *self.interpolate(vw[0,1:],vw[0,:-1], 'Linear')
+        F_21[-1,:-1] +=mu/hx[-1,:-1]*(\
+            0.5*(u[-1,:-1]-u[-2,:-1])/self.dy[-1,:-1]+\
+            0.5*(u[-1,1:]-u[-2,1:])/self.dy[-1,1:])\
+            *self.interpolate(vw[-1,1:],vw[-1,:-1], 'Linear')
+        
+        ############## tau 12*u flux (d/dy)
+        # Bottom face
+        F_12[1:,:] -=mu/hy[1:,:]*(u[1:,:]-u[:-1,:])/self.dy[:-1,:]\
+            *self.interpolate(uw[1:,:],uw[:-1,:], 'Linear')
+            # x gradients
+        F_12[1:,1:-1] -=mu/hy[1:,1:-1]*(\
+            0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
+            *self.interpolate(uw[1:,1:-1],uw[:-1,1:-1], 'Linear')
+        F_12[1:,0] -=mu/hy[1:,0]*(\
+            0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+            0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])\
+            *self.interpolate(uw[1:,0],uw[:-1,0], 'Linear')
+        F_12[1:,-1] -=mu/hy[1:,-1]*(\
+            0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])\
+            *self.interpolate(uw[1:,-1],uw[:-1,-1], 'Linear')
+        
+        # Top face
+        F_12[:-1,:]+=mu/hy[:-1,:]*(u[:-1,:]-u[:-1,:])/self.dy[:-1,:]\
+            *self.interpolate(uw[1:,:],uw[:-1,:], 'Linear')
+            # x gradients
+        F_12[:-1,1:-1] +=mu/hy[:-1,1:-1]*(\
+            0.5*(v[:-1,2:]-v[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(v[1:,2:]-v[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
+            *self.interpolate(uw[1:,1:-1],uw[:-1,1:-1], 'Linear')
+        F_12[:-1,0] +=mu/hy[:-1,0]*(\
+            0.5*(v[:-1,1]-v[:-1,0])/self.dx[:-1,0]+\
+            0.5*(v[1:,1]-v[1:,0])/self.dx[1:,0])\
+            *self.interpolate(uw[1:,0],uw[:-1,0], 'Linear')
+        F_12[:-1,-1] +=mu/hy[:-1,-1]*(\
+            0.5*(v[:-1,-1]-v[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(v[1:,-1]-v[1:,-2])/self.dx[1:,-1])\
+            *self.interpolate(uw[1:,-1],uw[:-1,-1], 'Linear')
+            
+        ############## tau 22*v flux (d/dy)
+        # Bottom face
+        F_22[1:,:] -=4.0/3*mu/hy[1:,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]\
+            *self.interpolate(vw[1:,:],vw[:-1,:], 'Linear')
+            # x gradients
+        F_22[1:,1:-1] -=2.0/3*mu/hy[1:,1:-1]*(\
+            0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
+            *self.interpolate(vw[1:,1:-1],vw[:-1,1:-1], 'Linear')
+        F_22[1:,0] -=2.0/3*mu/hy[1:,0]*(\
+            0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+            0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])\
+            *self.interpolate(vw[1:,0],vw[:-1,0], 'Linear')
+        F_22[1:,-1] -=2.0/3*mu/hy[1:,-1]*(\
+            0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])\
+            *self.interpolate(vw[1:,-1],vw[:-1,-1], 'Linear')
+        
+        # Top face
+        F_22[:-1,:]+=4.0/3*mu/hy[:-1,:]*(v[1:,:]-v[:-1,:])/self.dy[:-1,:]\
+            *self.interpolate(vw[1:,:],vw[:-1,:], 'Linear')
+            # x gradients
+        F_22[:-1,1:-1] +=2.0/3*mu/hy[:-1,1:-1]*(\
+            0.5*(u[:-1,2:]-u[:-1,:-2])/(self.dx[:-1,1:-1]+self.dx[:-1,:-2])+\
+            0.5*(u[1:,2:]-u[1:,:-2])/(self.dx[1:,1:-1]+self.dx[1:,:-2]))\
+            *self.interpolate(vw[1:,1:-1],vw[:-1,1:-1], 'Linear')
+        F_22[:-1,0] +=2.0/3*mu/hy[:-1,0]*(\
+            0.5*(u[:-1,1]-u[:-1,0])/self.dx[:-1,0]+\
+            0.5*(u[1:,1]-u[1:,0])/self.dx[1:,0])\
+            *self.interpolate(vw[1:,0],vw[:-1,0], 'Linear')
+        F_22[:-1,-1] +=2.0/3*mu/hy[:-1,-1]*(\
+            0.5*(u[:-1,-1]-u[:-1,-2])/self.dx[:-1,-1]+\
+            0.5*(u[1:,-1]-u[1:,-2])/self.dx[1:,-1])\
+            *self.interpolate(vw[1:,-1],vw[:-1,-1], 'Linear')
+                
         self.BCs.Visc_BCs(F_11, F_12, F_21, F_22, np.zeros_like(self.dx),\
-                          np.zeros_like(self.dx), u, v)
+                          np.zeros_like(self.dx), u, v, isWork)
        
         return F_11, F_12, F_21, F_22
         
@@ -482,7 +504,7 @@ class TwoDimPlanarSolve():
         
         # Apply boundary conditions on heat flux
         self.BCs.Visc_BCs(np.zeros_like(qx),np.zeros_like(qx),np.ones_like(qx),\
-                          np.ones_like(qx), qx,qy, T, np.zeros_like(qx))
+                          np.ones_like(qx), qx,qy, T, np.zeros_like(qx), False)
 #        if self.BCs.BCs['bc_type_left']=='outlet':
 #            qx[:,0] -=k*(T[:,1]-T[:,0])/dx[:,0] # Effect is 0 flux in x
 #        if self.BCs.BCs['bc_type_right']=='outlet':

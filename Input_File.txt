@@ -48,11 +48,11 @@ bias_size_y:0.0005
 ######################################################
 
 CFL:0.1
-dt:1e-11
-total_time_steps:1
+dt:None
+total_time_steps:1000
 total_time:None
 Time_Scheme:RK2
-Number_Data_Output:1
+Number_Data_Output:10
 
 ######################################################
 #			Boundary conditions

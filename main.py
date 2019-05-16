@@ -333,6 +333,7 @@ input_file.close()
 ##########################################################################
 # ------------------------------------Post-processing
 ##########################################################################
+pyplot.ioff()
 u,v,p,T=domain.primitiveFromConserv(domain.rho, domain.rhou, domain.rhov, domain.rhoE)
 rho=domain.rho
 X,Y=domain.X,domain.Y
@@ -371,23 +372,23 @@ pl=5
 fig4=pyplot.figure(figsize=(7, 7))
 pyplot.quiver(X[::pl, ::pl], Y[::pl, ::pl], \
               u[::pl, ::pl], v[::pl, ::pl]) 
-pyplot.contourf(X, Y, p-101325, alpha=0.5, cmap=cm.viridis)  
+pyplot.contourf(X, Y, p-101325, alpha=0.5, cmap=cm.viridis)
 pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
 pyplot.title('Velocity plot and Gage Pressure contours');
-#fig4.savefig(datTime+'_Vel_Press.png',dpi=300)
+fig4.savefig('Vel_Press.png',dpi=300)
 
 # Temperature contour
 fig5=pyplot.figure(figsize=(7, 7))
 pyplot.quiver(X[::pl, ::pl], Y[::pl, ::pl], \
               u[::pl, ::pl], v[::pl, ::pl]) 
-pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)  
+pyplot.contourf(X, Y, T, alpha=0.5, cmap=cm.viridis)
 pyplot.colorbar()
 pyplot.xlabel('$x$ (m)')
 pyplot.ylabel('$y$ (m)')
 pyplot.title('Velocity plot and Temperature distribution t=%f'%t);
-#fig5.savefig(datTime+'_Temp.png',dpi=300)
+fig5.savefig('Vel_Temp.png',dpi=300)
 
 # Density contour
 #fig6=pyplot.figure(figsize=(7, 7))

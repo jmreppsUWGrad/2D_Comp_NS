@@ -52,26 +52,26 @@ class BCs():
         # Start with wall BCs
         
         # Left face
-#        if st.find(self.BCs['bc_type_left'], 'slip')>=0:
-#           tau12[:,0]=0
-       
-#        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
-#            qx[:,0]=0
+        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
+            qx[:,0]=0
             
         if st.find(self.BCs['bc_type_left'], 'outlet')>=0:
-            tau12[:,0]=0
+            tau21[:,0]=0
             qx[:,0]=0
         
+        if st.find(self.BCs['bc_type_left'], 'inlet')>=0:
+            tau11[:,0]=0
+        
         # Right face
-#        if st.find(self.BCs['bc_type_right'], 'slip')>=0:
-#           tau12[:,-1]=0
-       
-#        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
-#            qx[:,-1]=0
+        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
+            qx[:,-1]=0
             
         if st.find(self.BCs['bc_type_right'], 'outlet')>=0:
-            tau12[:,-1]=0
+            tau21[:,-1]=0
             qx[:,-1]=0
+        
+        if st.find(self.BCs['bc_type_right'], 'inlet')>=0:
+            tau11[:,-1]=0
         
         # Periodic BCs on left/right faces
         if st.find(self.BCs['bc_type_left'], 'periodic')>=0\
@@ -150,26 +150,27 @@ class BCs():
             
             
         # South face
-#        if st.find(self.BCs['bc_type_south'], 'slip')>=0:
-#            tau12[0,:]=0
-        
-#        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
-#            qy[0,:]=0
+        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
+            qy[0,:]=0
         
         if st.find(self.BCs['bc_type_south'], 'outlet')>=0:
             tau12[0,:]=0
             qy[0,:]=0
         
+        if st.find(self.BCs['bc_type_south'], 'inlet')>=0:
+            tau22[0,:]=0
+            
         # North face
-#        if st.find(self.BCs['bc_type_north'], 'slip_wall')>=0:
-#            tau12[-1,:]=0
-        
-#        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
-#            qy[-1,:]=0
+        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
+            qy[-1,:]=0
         
         if st.find(self.BCs['bc_type_north'], 'outlet')>=0:
             tau12[-1,:]=0
             qy[-1,:]=0
+            
+        if st.find(self.BCs['bc_type_north'], 'inlet')>=0:
+            tau22[-1,:]=0
+            
         
         # Periodic boundary       
         if st.find(self.BCs['bc_type_north'], 'periodic')>=0\

@@ -19,8 +19,8 @@
 
 Length:1e-3
 Width:1e-3
-Nodes_x:125
-Nodes_y:125
+Nodes_x:150
+Nodes_y:150
 Fluid:Air
 k:0.0263844657098
 gamma:1.40169049091
@@ -49,10 +49,10 @@ bias_size_y:0.0005
 
 CFL:0.1
 dt:None
-total_time_steps:1000
+total_time_steps:100
 total_time:None
 Time_Scheme:RK2
-Number_Data_Output:10
+Number_Data_Output:1
 
 ######################################################
 #			Boundary conditions

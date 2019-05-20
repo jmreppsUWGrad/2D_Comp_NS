@@ -329,11 +329,13 @@ while nt<settings['total_time_steps'] and t<settings['total_time']:
 time_end=time.time()
 print 'Solver time per 1000 time steps: %f min'%((time_end-time_begin)/60.0*1000/nt)
 input_file.Write_single_line('Solver time per 1000 time steps: %f min'%((time_end-time_begin)/60.0*1000/nt))
+print 'Total time steps: %i'%(nt)
+input_file.Write_single_line('Total time steps: %i'%(nt))
 input_file.close()
 ##########################################################################
 # ------------------------------------Post-processing
 ##########################################################################
-pyplot.ioff()
+#pyplot.ioff()
 u,v,p,T=domain.primitiveFromConserv(domain.rho, domain.rhou, domain.rhov, domain.rhoE)
 rho=domain.rho
 X,Y=domain.X,domain.Y

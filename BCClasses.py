@@ -52,8 +52,8 @@ class BCs():
         # Start with wall BCs
         
         # Left face
-        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
-            qx[:,0]=0
+#        if st.find(self.BCs['bc_type_left'], 'adiabatic')>=0:
+#            qx[:,0]=0
             
         if st.find(self.BCs['bc_type_left'], 'outlet')>=0:
             tau21[:,0]=0
@@ -63,8 +63,8 @@ class BCs():
             tau11[:,0]=0
         
         # Right face
-        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
-            qx[:,-1]=0
+#        if st.find(self.BCs['bc_type_right'], 'adiabatic')>=0:
+#            qx[:,-1]=0
             
         if st.find(self.BCs['bc_type_right'], 'outlet')>=0:
             tau21[:,-1]=0
@@ -150,8 +150,8 @@ class BCs():
             
             
         # South face
-        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
-            qy[0,:]=0
+#        if st.find(self.BCs['bc_type_south'], 'adiabatic')>=0:
+#            qy[0,:]=0
         
         if st.find(self.BCs['bc_type_south'], 'outlet')>=0:
             tau12[0,:]=0
@@ -161,8 +161,8 @@ class BCs():
             tau22[0,:]=0
             
         # North face
-        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
-            qy[-1,:]=0
+#        if st.find(self.BCs['bc_type_north'], 'adiabatic')>=0:
+#            qy[-1,:]=0
         
         if st.find(self.BCs['bc_type_north'], 'outlet')>=0:
             tau12[-1,:]=0
